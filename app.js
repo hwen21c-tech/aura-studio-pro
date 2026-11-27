@@ -1251,7 +1251,7 @@ function refreshStats(){
 }
 
 /* ---------------------------------------------------------------- 5. 루프 · 내보내기 */
-var API_URL = 'https://stock-dashboard-live-6frm.vercel.app/api/content-ai';
+var API_URL = 'https://stock-dashboard-live-bice.vercel.app/api/content-ai';
 
 function planLoop(){
   var barSec = 4 * 60 / S.bpm;
@@ -2648,7 +2648,7 @@ function boot(){
   /* 서비스워커 */
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function(){
-      navigator.serviceWorker.register('/sw.js').catch(function(){});
+      navigator.serviceWorker.register('sw.js').catch(function(){});
     });
   }
 

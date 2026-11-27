@@ -5,7 +5,7 @@
    · 악기 샘플(외부 CDN)은 브라우저 HTTP 캐시에 맡긴다.
    ============================================================ */
 const PREFIX = 'aura-studio-pro-';
-const VERSION = PREFIX + 'v1';
+const VERSION = PREFIX + 'v2';
 const SHELL = [
   '/',
   '/index.html',

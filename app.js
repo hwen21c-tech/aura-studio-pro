@@ -76,7 +76,49 @@ var PRESETS = [
   { id:'hiphop', em:'🔥', name:'힙합', mood:'도심 속 야경, 묵직한 808 베이스와 트렌디한 힙합 비트',
     key:2, mode:'minor', bpm:132, bright:44, energy:84, ext:'9', prog:'trap',
     mel:'ep', chd:'pad', bas:'bassSyn', drm:'kit-r8', arp:'xylo',
-    eng:'Modern trap hip-hop instrumental, heavy 808 sub bass, rapid hi-hat rolls, atmospheric synth pad, clean studio punch' }
+    eng:'Modern trap hip-hop instrumental, heavy 808 sub bass, rapid hi-hat rolls, atmospheric synth pad, clean studio punch' },
+
+  /* ---- 확장 10종 (뉴스·속보·보사노바·K-POP·발라드·펑키·8비트·앰비언트·테크하우스·네오소울) ---- */
+  { id:'news', em:'📈', name:'뉴스/경제 브리핑', mood:'깔끔한 뉴스·경제 브리핑 오프닝, 마림바 펄스와 밝은 피아노',
+    key:0, mode:'major', bpm:110, bright:74, energy:56, ext:'7', prog:'news', swing:0, curve:'standard',
+    mel:'piano', chd:'ep', bas:'bassEl', drm:'kit-stark', arp:'xylo', pat:'news', arpPat:[0,2,4,6,8,10,12,14],
+    eng:'Clean news and economy briefing bed, steady marimba pulse, bright grand piano accents, soft kick and shaker groove, neutral optimistic corporate tone' },
+  { id:'breaking', em:'🚨', name:'속보/서스펜스', mood:'긴장감 넘치는 속보 화면, 낮게 깔리는 마이너 베이스와 타이트한 드럼',
+    key:2, mode:'minor', bpm:124, bright:38, energy:88, ext:'7', prog:'breaking', swing:0, curve:'buildup',
+    mel:'lead', chd:'pad', bas:'bassSyn', drm:'kit-linn', arp:'xylo', pat:'breaking', arpPat:[0,2,4,6,8,10,12,14],
+    eng:'Tense breaking news underscore, dark minor synth bass ostinato, tight ticking drums, suspenseful pulsing arpeggio, urgent cinematic tension' },
+  { id:'bossa', em:'☕', name:'보사노바 카페', mood:'햇살 드는 카페 테라스, 따뜻한 기타와 가벼운 라틴 리듬의 보사노바',
+    key:5, mode:'major', bpm:108, bright:68, energy:44, ext:'9', prog:'bossa', swing:18, curve:'chill',
+    mel:'flute', chd:'ep', bas:'bassEl', drm:'kit-acoustic', arp:'guitar', pat:'bossa', arpPat:[0,3,6,10,12,14],
+    eng:'Warm acoustic bossa nova, gentle nylon guitar comping, soft flute melody, light latin rimshot groove, relaxed sunny cafe atmosphere' },
+  { id:'kpop', em:'🌸', name:'K-POP 청량', mood:'여름 햇살처럼 청량한 K-POP, 밝은 신스와 펑키 베이스',
+    key:7, mode:'major', bpm:122, bright:86, energy:82, ext:'9', prog:'kpop', swing:14, curve:'standard',
+    mel:'lead', chd:'pad', bas:'bassEl', drm:'kit-linn', arp:'xylo', pat:'kpop', arpPat:[0,2,4,6,8,10,12,14],
+    eng:'Bright refreshing K-pop instrumental, sparkling synth plucks, funky electric bass, punchy modern pop drums, catchy uplifting hook' },
+  { id:'ballad', em:'🎹', name:'감성 발라드', mood:'이별의 밤, 서정적인 피아노와 첼로가 흐르는 감성 발라드',
+    key:9, mode:'minor', bpm:72, bright:48, energy:40, ext:'9', prog:'ballad', swing:0, curve:'standard',
+    mel:'piano', chd:'strings', bas:'bassSyn', drm:'kit-acoustic', arp:'harp', pat:'ballad', arpPat:[0,4,8,12],
+    eng:'Emotional piano ballad, lyrical grand piano melody, warm cello and string chords, soft acoustic drums, tender late night mood' },
+  { id:'funk', em:'🕺', name:'펑키 그루브', mood:'클럽을 달구는 펑키 그루브, 그루비한 베이스와 브라스 스탭',
+    key:3, mode:'major', bpm:112, bright:72, energy:80, ext:'7', prog:'funk', swing:18, curve:'standard',
+    mel:'ep', chd:'organ', bas:'bassEl', drm:'kit-r8', arp:'guitar', pat:'funk', arpPat:[0,1,2,3,4,6,7,8,10,11,12,14],
+    eng:'Classic funk groove, slap electric bass, tight brass stabs, clavinet and rhythm guitar, punchy syncopated drums' },
+  { id:'chiptune', em:'🕹️', name:'8비트 레트로', mood:'아이들이 좋아하는 8비트 게임 화면, 통통 튀는 칩튠 신스와 실로폰',
+    key:0, mode:'major', bpm:132, bright:90, energy:78, ext:'7', prog:'chiptune', swing:0, curve:'standard',
+    mel:'lead', chd:'ep', bas:'bassSyn', drm:'kit-cr78', arp:'xylo', pat:'chiptune', arpPat:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+    eng:'Playful 8-bit chiptune, bright square wave lead, bouncy xylophone arpeggio, punchy retro game drums, cheerful kids and game vibe' },
+  { id:'ambient', em:'🌿', name:'힐링 앰비언트', mood:'새벽 숲의 고요함, 하프와 플루트가 흐르는 잔잔한 힐링 앰비언트',
+    key:5, mode:'major', bpm:68, bright:58, energy:26, ext:'9', prog:'ambient', swing:0, curve:'chill',
+    mel:'flute', chd:'pad', bas:'bassSyn', drm:'kit-stark', arp:'harp', pat:'ambient', arpPat:[0,6,12],
+    eng:'Calm healing ambient, airy flute melody, delicate harp, warm sustained pads, sparse soft percussion, deep peaceful space' },
+  { id:'techhouse', em:'⚡', name:'테크 하우스', mood:'새벽 클럽의 테크 하우스, 강렬한 4/4 킥과 에너지 드롭',
+    key:9, mode:'minor', bpm:126, bright:66, energy:92, ext:'7', prog:'techhouse', swing:0, curve:'drop',
+    mel:'lead', chd:'pad', bas:'bassSyn', drm:'kit-linn', arp:'xylo', pat:'techhouse', arpPat:[2,6,10,14],
+    eng:'Driving tech house, powerful four-on-the-floor kick, offbeat open hats, rolling synth bass, deep club energy drop' },
+  { id:'neosoul', em:'🌙', name:'재즈 네오소울', mood:'늦은 밤의 재즈 네오소울, 7th·9th 텐션 코드와 스윙 드럼',
+    key:2, mode:'dorian', bpm:88, bright:52, energy:42, ext:'9', prog:'neosoul', swing:46, curve:'chill',
+    mel:'ep', chd:'organ', bas:'bassEl', drm:'kit-acoustic', arp:'xylo', pat:'neosoul', arpPat:[0,3,6,10,12],
+    eng:'Smooth jazz neo-soul, lush 7th and 9th chord voicings, warm Rhodes melody, laid-back swung drums, late night intimate groove' }
 ];
 
 /* 코드 진행 (스케일 도수) — 8마디 */
@@ -87,7 +129,17 @@ var PROGRESSIONS = {
   synthwave: { label:'신스웨이브 진행', minor:[0,6,5,6],   major:[0,6,5,6] },
   pop:       { label:'팝 진행',        minor:[2,6,3,0],        major:[0,4,5,3] },
   trap:      { label:'트랩 진행',      minor:[0,3,5,4],        major:[0,3,5,4] },
-  canon:     { label:'캐논 진행',  minor:[0,4,5,2,3,0,3,4], major:[0,4,5,2,3,0,3,4] }
+  canon:     { label:'캐논 진행',  minor:[0,4,5,2,3,0,3,4], major:[0,4,5,2,3,0,3,4] },
+  news:      { label:'뉴스/경제 진행', minor:[0,5,3,4],     major:[0,4,3,4] },
+  breaking:  { label:'속보 진행',      minor:[0,6,5,6],     major:[0,5,4,5] },
+  bossa:     { label:'보사노바 진행',  minor:[0,5,1,4],     major:[0,5,1,4] },
+  kpop:      { label:'K-POP 진행',     minor:[5,3,0,4],     major:[5,3,0,4] },
+  ballad:    { label:'발라드 진행',    minor:[0,5,2,6],     major:[0,5,3,4] },
+  funk:      { label:'펑키 진행',      minor:[0,3,4,3],     major:[0,3,4,3] },
+  chiptune:  { label:'8비트 진행',     minor:[0,3,4,3],     major:[0,4,5,3] },
+  ambient:   { label:'앰비언트 진행',  minor:[0,5,3,4],     major:[0,5,3,4] },
+  techhouse: { label:'테크 하우스 진행', minor:[0,6,3,4],   major:[0,5,3,4] },
+  neosoul:   { label:'네오소울 진행',  minor:[0,3,6,2],     major:[1,4,0,5] }
 };
 
 /* 드럼 패턴 (16분 16칸) */
@@ -115,6 +167,48 @@ var DRUM_PAT = {
   'kit-stark': {
     A:{ kick:'1000000010000000', snare:'0000010000000100', hat:'1010101010101010', ohat:'0000000000000000' },
     B:{ kick:'1000000010010000', snare:'0000010000000100', hat:'1010101010101011', ohat:'0000000000000000' }
+  },
+
+  /* 확장 프리셋 전용 패턴 — 프리셋이 pat:'…' 로 골라 쓴다 */
+  news: {
+    A:{ kick:'1000000010000000', snare:'0000100000001000', hat:'1010101010101010', ohat:'0000000000000000' },
+    B:{ kick:'1000000010000010', snare:'0000100000001010', hat:'1010111010101110', ohat:'0000000000001000' }
+  },
+  breaking: {
+    A:{ kick:'1000000010000100', snare:'0000100000001000', hat:'0010001000100010', ohat:'0000000000000000' },
+    B:{ kick:'1000001010000100', snare:'0000100000001010', hat:'0010001000100011', ohat:'0000000000000100' }
+  },
+  bossa: {
+    A:{ kick:'1000000010000000', snare:'0000100100001001', hat:'1010101010101010', ohat:'0000000000000000' },
+    B:{ kick:'1000000010000010', snare:'0000100100001010', hat:'1010101010101110', ohat:'0000000000001000' }
+  },
+  kpop: {
+    A:{ kick:'1000000010000000', snare:'0000100000001000', hat:'1010101010101010', ohat:'0000000000001000' },
+    B:{ kick:'1000000010000010', snare:'0000100000001010', hat:'1010101110101011', ohat:'0000000010000000' }
+  },
+  ballad: {
+    A:{ kick:'1000000010000000', snare:'0000100000001000', hat:'1010101010101010', ohat:'0000000000000000' },
+    B:{ kick:'1000000010000000', snare:'0000100000001010', hat:'1010101010101011', ohat:'0000000010000000' }
+  },
+  funk: {
+    A:{ kick:'1000000010000010', snare:'0000100000001000', hat:'1010101010101010', ohat:'0000000010000000' },
+    B:{ kick:'1000000010010010', snare:'0000100000001010', hat:'1010111010101110', ohat:'0000000010000000' }
+  },
+  chiptune: {
+    A:{ kick:'1000000010000000', snare:'0000100000001000', hat:'1010101010101010', ohat:'0000000000000000' },
+    B:{ kick:'1000000010000010', snare:'0000100000001010', hat:'1010101110101110', ohat:'0000000000001000' }
+  },
+  ambient: {
+    A:{ kick:'1000000000000000', snare:'0000000000000000', hat:'0000000000000000', ohat:'0000000000000000' },
+    B:{ kick:'1000000010000000', snare:'0000000000000000', hat:'0000000000000000', ohat:'0000000000000000' }
+  },
+  techhouse: {
+    A:{ kick:'1000100010001000', snare:'0000100000001000', hat:'0000000000000000', ohat:'0010001000100010' },
+    B:{ kick:'1000100010001010', snare:'0000100000001000', hat:'1010101010101010', ohat:'0010001000100010' }
+  },
+  neosoul: {
+    A:{ kick:'1000000010000010', snare:'0000100000001000', hat:'1010101010101010', ohat:'0000001000000000' },
+    B:{ kick:'1000000010010000', snare:'0000100000001010', hat:'1010101110101011', ohat:'0000001000001000' }
   }
 };
 
@@ -213,7 +307,7 @@ function chordName(deg, ext){
   var fifth = (iv[((deg + 4) % 7 + 7) % 7] - iv[((deg % 7) + 7) % 7] + 12) % 12;
   var minor = third === 3;
   var dim = minor && fifth === 6;
-  var name = NOTE_NAMES[rootPc] + (dim ? 'dim' : minor ? 'm' : '');
+  var name = KEY_LABEL[rootPc] + (dim ? 'dim' : minor ? 'm' : '');
   if (ext === '7') name += minor ? '7' : 'M7';
   else if (ext === '9') name += minor ? '9' : 'M9';
   return name;
@@ -746,6 +840,14 @@ function defaultCurve(kind){
   return c.map(function(v){ return Math.max(0.12, Math.min(1, v)); });
 }
 
+function presetEnergyCurve(p){
+  var kind = (p && p.curve) || 'standard';
+  var en = p && p.energy != null ? p.energy : S.energy;
+  return defaultCurve(kind).map(function(v){
+    return clamp(v * (0.55 + en / 100 * 0.62), .12, 1);
+  });
+}
+
 function sections(){
   if (S.bars <= 4) return [{ name:'A', start:0, len:S.bars, e:.7 }];
   if (S.bars <= 8) return [{ name:'A', start:0, len:4, e:.55 }, { name:'B', start:4, len:4, e:.92 }];
@@ -876,7 +978,9 @@ function genMelody(seed, fromHum){
 
 function genBass(seed){
   seedRand(seed || 5150);
-  var style = { citypop:'funk', lofi:'straight', cinematic:'sub', synthwave:'pulse', acoustic:'straight', hiphop:'sub' }[S.preset] || 'straight';
+  var style = { citypop:'funk', lofi:'straight', cinematic:'sub', synthwave:'pulse', acoustic:'straight', hiphop:'sub',
+    news:'straight', breaking:'pulse', bossa:'bossa', kpop:'funk', ballad:'straight', funk:'funk',
+    chiptune:'pulse', ambient:'sub', techhouse:'pulse', neosoul:'walk' }[S.preset] || 'straight';
   var out = [];
   for (var b = 0; b < S.bars; b++) {
     var ch = S.chords[b]; if (!ch) continue;
@@ -891,6 +995,8 @@ function genBass(seed){
     if (style === 'funk')       steps = e > .6 ? [[0,root],[3,oct],[6,fifth],[8,root],[11,oct],[14,fifth]] : [[0,root],[6,fifth],[8,root],[14,oct]];
     else if (style === 'pulse') steps = [[0,root],[2,oct],[4,root],[6,oct],[8,root],[10,oct],[12,root],[14,oct]];
     else if (style === 'sub')   steps = [[0,root],[8,root],[14,chance(.5) ? fifth : oct]];
+    else if (style === 'bossa') steps = e > .5 ? [[0,root],[3,fifth],[6,oct],[10,root],[13,fifth]] : [[0,root],[6,fifth],[10,oct]];
+    else if (style === 'walk')  steps = [[0,root],[4,fifth],[8,oct],[12,fifth],[14,chance(.5) ? fifth : oct]];
     else                        steps = [[0,root],[6,fifth],[8,root],[12,oct]];
     steps.forEach(function(p){
       out.push({ bar:b, step:p[0], midi:p[1], dur: p[0] === 0 ? 3 : 2, vel: clamp(.62 + e * .3, .3, 1) });
@@ -907,6 +1013,8 @@ function genBass(seed){
 function genArp(seed){
   seedRand(seed || 3131);
   var out = [];
+  var pObj = PRESETS.filter(function(x){ return x.id === S.preset; })[0];
+  var fixedSteps = pObj && pObj.arpPat && pObj.arpPat.length ? pObj.arpPat : null;
   for (var b = 0; b < S.bars; b++) {
     var ch = S.chords[b]; if (!ch) continue;
     var e = barEnergy(b);
@@ -915,6 +1023,18 @@ function genArp(seed){
     if (sec.name === 'Intro' && b % 2 === 0) continue;
     var tones = ch.notes.map(function(n){ return n + 12; });
     var seq = [0, 1, 2, 3, 2, 1, 2, 3];
+    if (fixedSteps) {
+      var dense = fixedSteps.length > 8;
+      for (var f = 0; f < fixedSteps.length; f++) {
+        var fst = fixedSteps[f];
+        if (sec.name === 'Intro' && fst > 7) continue;
+        if (sec.name === 'Outro' && fst > 11) continue;
+        var fidx = seq[f % seq.length] % tones.length;
+        out.push({ bar:b, step:fst, midi:tones[fidx], dur: dense ? 1 : 2,
+          vel: (fst % 4 === 0 ? .5 : .34) + e * .18 });
+      }
+      continue;
+    }
     var count = e > .8 ? 16 : e > .5 ? 8 : 4;
     var gap = 16 / count;
     for (var k = 0; k < count; k++) {
@@ -928,7 +1048,8 @@ function genArp(seed){
 function genDrums(seed){
   seedRand(seed || 4242);
   var kitId = S.tracks.filter(function(t){ return t.role === 'drums'; })[0].inst;
-  var pat = DRUM_PAT[kitId] || DRUM_PAT['kit-cr78'];
+  var pObj = PRESETS.filter(function(x){ return x.id === S.preset; })[0];
+  var pat = (pObj && pObj.pat && DRUM_PAT[pObj.pat]) || DRUM_PAT[kitId] || DRUM_PAT['kit-cr78'];
   var out = [];
   for (var b = 0; b < S.bars; b++) {
     var e = barEnergy(b);
@@ -1026,9 +1147,19 @@ var MOOD_RULES = [
   { p:'citypop',   w:['시티팝','시티','네온','드라이브','밤거리','80','야경','몽환','일렉'] },
   { p:'lofi',      w:['로파이','카페','비','빗소리','아늑','새벽','공부','잔잔','감성'] },
   { p:'cinematic', w:['시네마','영화','웅장','오케스트라','감동','우주','ost','드라마'] },
-  { p:'synthwave', w:['신스','레트로','복고','게임','아케이드','강렬','질주'] },
+  { p:'synthwave', w:['신스웨이브','신스','레트로','복고','질주','아케이드'] },
   { p:'acoustic',  w:['어쿠스틱','기타','아침','햇살','산책','주말','맑','밝'] },
-  { p:'hiphop',    w:['힙합','트랩','808','비트','도심','랩','쿨','쇼츠','뉴스','경제','긴장','긴박','서스펜스'] }
+  { p:'hiphop',    w:['힙합','트랩','808','비트','도심','랩','쿨','쇼츠'] },
+  { p:'news',      w:['뉴스','경제','브리핑','시황','리포트','앵커','증시','깔끔'] },
+  { p:'breaking',  w:['속보','긴장','긴박','서스펜스','추적','위기','경고','스릴'] },
+  { p:'bossa',     w:['보사노바','보사','라틴','브런치','테라스'] },
+  { p:'kpop',      w:['k-pop','kpop','케이팝','아이돌','청량','걸그룹','댄스'] },
+  { p:'ballad',    w:['발라드','애절','이별','서정','눈물','사랑'] },
+  { p:'funk',      w:['펑키','펑크','그루브','브라스','디스코','클럽'] },
+  { p:'chiptune',  w:['8비트','8bit','칩튠','픽셀','게임'] },
+  { p:'ambient',   w:['앰비언트','힐링','명상','수면','요가','숲'] },
+  { p:'techhouse', w:['테크','하우스','드롭','페스티벌','edm','일렉트로'] },
+  { p:'neosoul',   w:['네오소울','재즈','소울','알앤비','r&b'] }
 ];
 function guessPreset(text){
   var t = String(text || '').toLowerCase(), best = null, bs = 0;
@@ -1044,11 +1175,10 @@ function guessPreset(text){
 function applyPresetValues(p, keepMood){
   S.preset = p.id; S.prog = p.prog || p.id; S.ext = p.ext || '7';
   S.key = p.key; S.mode = p.mode; S.bpm = p.bpm; S.bright = p.bright; S.energy = p.energy;
+  if (p.swing != null) S.swing = clamp(p.swing, 0, 60);
   var byRole = { melody:p.mel, chords:p.chd, bass:p.bas, drums:p.drm, arp:p.arp || 'guitar' };
   S.tracks.forEach(function(t){ if (byRole[t.role]) t.inst = byRole[t.role]; else t.inst = t.inst; });
-  S.energyCurve = defaultCurve('standard').map(function(v, i){
-    return clamp(v * (0.55 + p.energy / 100 * 0.62), .12, 1);
-  });
+  S.energyCurve = presetEnergyCurve(p);
   if (!keepMood) {
     var mt = $('mood-text'); if (mt) mt.value = p.mood;
   }
@@ -1072,6 +1202,8 @@ function syncPresetUI(){
   var brv = $('bright-val'); if (brv) brv.textContent = S.bright;
   var en = $('energy-slider'); if (en) en.value = S.energy;
   var env = $('energy-val'); if (env) env.textContent = S.energy;
+  var sw = $('swing-slider'); if (sw) sw.value = S.swing;
+  var swv = $('swing-val'); if (swv) swv.textContent = S.swing;
   if (AU.ctx && AU.master) {
     AU.master.low.gain.value = S.master.low;
   }
@@ -1738,9 +1870,10 @@ function snapToScale(midi){
 function renderPresets(){
   var box = $('preset-buttons'); if (!box) return;
   box.innerHTML = PRESETS.map(function(p){
-    return '<button class="preset' + (p.id === S.preset ? ' on' : '') + '" data-pid="' + p.id + '">' +
+    return '<button class="preset' + (p.id === S.preset ? ' on' : '') + '" data-pid="' + p.id + '" title="' + p.name + ' · ' + p.bpm + ' BPM">' +
       '<span class="em">' + p.em + '</span>' + p.name + '</button>';
   }).join('');
+  var cnt = $('preset-count'); if (cnt) cnt.textContent = PRESETS.length;
   Array.prototype.forEach.call(box.children, function(btn){
     btn.addEventListener('click', function(){
       var p = PRESETS.filter(function(x){ return x.id === btn.dataset.pid; })[0];
@@ -2478,7 +2611,7 @@ function boot(){
   bindCanvasInput();
   if (!S.energyCurve || S.energyCurve.length !== 16) {
     var p = PRESETS.filter(function(x){ return x.id === S.preset; })[0] || PRESETS[0];
-    S.energyCurve = defaultCurve('standard').map(function(v){ return clamp(v * (0.55 + p.energy / 100 * 0.62), .12, 1); });
+    S.energyCurve = presetEnergyCurve(p);
   }
   if (typeof S.isLoop === 'undefined') S.isLoop = true;
 
@@ -2556,6 +2689,13 @@ window.Aura = {
     notes: function(){ return S.notes.length; },
     drums: function(){ return S.drums.length; },
     hum: function(){ return S.hum.filter(function(x){ return x != null; }).length; },
+    presets: function(){
+      return PRESETS.map(function(p){
+        return { id:p.id, name:p.name, bpm:p.bpm, key:p.key, mode:p.mode, ext:p.ext, prog:p.prog,
+          swing:p.swing != null ? p.swing : S.swing,
+          insts:{ melody:p.mel, chords:p.chd, bass:p.bas, drums:p.drm, arp:p.arp }, pat:p.pat || null, arpPat:p.arpPat || null };
+      });
+    },
     state: function(){
       return {
         bpm:S.bpm, key:S.key, mode:S.mode, bars:S.bars, preset:S.preset,

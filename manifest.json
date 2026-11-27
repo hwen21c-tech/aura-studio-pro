@@ -2,7 +2,7 @@
   "id": "./",
   "name": "AURA Studio Pro — AI 작곡·허밍 편곡",
   "short_name": "AURA",
-  "description": "한 줄 무드로 AI가 코드·멜로디·드럼을 짜고, 실제 악기 샘플로 16마디를 연주하며, 15·30·60초 심리스 루프 WAV와 MIDI로 내보내는 브라우저 작곡 스튜디오 (가족 PIN 0623)",
+  "description": "한 줄 무드로 AI가 곡을 짜고 실제 악기 샘플로 연주하며, 영상 합본·내레이션 덕킹·드럼 시퀀서·건반까지 담은 브라우저 작곡 스튜디오 (가족 PIN 0623)",
   "lang": "ko",
   "dir": "ltr",
   "start_url": "./",
@@ -20,7 +20,9 @@
   ],
   "shortcuts": [
     { "name": "AI 작곡", "short_name": "작곡", "url": "./?tab=compose" },
-    { "name": "허밍 편곡", "short_name": "허밍", "url": "./?tab=hum" },
+    { "name": "드럼·건반 연주", "short_name": "연주", "url": "./?tab=play" },
+    { "name": "내레이션 덕킹", "short_name": "내레이션", "url": "./?tab=narr" },
+    { "name": "영상 합본", "short_name": "영상", "url": "./?tab=video" },
     { "name": "루프 내보내기", "short_name": "내보내기", "url": "./?tab=export" }
   ]
 }

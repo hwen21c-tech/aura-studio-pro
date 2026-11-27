@@ -34,6 +34,10 @@ var INST = {
   guitar:  { name:'어쿠스틱 기타', kind:'sample', base:INST_BASE+'guitar-acoustic/', notes:['C3','E4'], atk:0.004, rel:0.45, gain:0.7, tone:7500, tag:'샘플' },
   harp:    { name:'하프', kind:'sample', base:INST_BASE+'harp/', notes:['C3','D4'], atk:0.003, rel:1.0, gain:0.66, tone:8000, tag:'샘플' },
   xylo:    { name:'마림바/실로폰', kind:'sample', base:INST_BASE+'xylophone/', notes:['C5','G6'], atk:0.002, rel:0.3, gain:0.5, tone:9000, tag:'샘플' },
+  /* 보컬 코러스 패드 — 샘플 없이 포먼트 신스로 (가볍게) */
+  'vox-ooh':   { name:'보컬 Ooh 패드', kind:'synth', synth:'ooh',   atk:0.30, dec:0.7, sus:0.82, rel:1.2, gain:0.34, tone:2600, bright:0.9, formant:430,  tag:'신스' },
+  'vox-aah':   { name:'보컬 Aah 합창', kind:'synth', synth:'aah',   atk:0.22, dec:0.6, sus:0.80, rel:1.1, gain:0.30, tone:4200, bright:1.1, formant:760,  tag:'신스' },
+  'vox-chops': { name:'보컬 찹 리듬', kind:'synth', synth:'chops', atk:0.005, dec:0.16, sus:0.18, rel:0.14, gain:0.30, tone:5200, bright:1.2, formant:1100, tag:'신스' },
   /* 드럼 킷 */
   'kit-acoustic': { name:'어쿠스틱 킷', kind:'drums', folder:'acoustic-kit', gain:1.0, tag:'샘플' },
   'kit-cr78':     { name:'시티팝 (CR-78)', kind:'drums', folder:'CR78', gain:1.0, tag:'샘플' },
@@ -219,7 +223,7 @@ var S = {
   humanize: true, fill: true, normalize: true,
   preset: 'citypop', prog: 'citypop', ext: '9',
   energyCurve: [],
-  chords: [], notes: [], bass: [], arp: [], drums: [],
+  chords: [], notes: [], bass: [], arp: [], drums: [], vocal: [],
   events: [], eventsLen: 0,
   hum: new Array(16).fill(null),
   humMidi: [],
@@ -228,20 +232,41 @@ var S = {
   loop: { type:'sec', value: 15 },
   isPlaying: false, playing: false, step: 0, isLoop: true, normalize: true, exactSec: true,
   tracks: [
-    { id:'melody', role:'melody', name:'멜로디', inst:'piano',  vol:0.85, pan:-0.08, mute:false, solo:false },
-    { id:'chords', role:'chords', name:'코드',   inst:'strings',vol:0.62, pan: 0.12, mute:false, solo:false },
-    { id:'bass',   role:'bass',   name:'베이스', inst:'bassEl', vol:0.80, pan: 0,    mute:false, solo:false },
-    { id:'drums',  role:'drums',  name:'드럼',   inst:'kit-cr78',vol:0.85, pan: 0,   mute:false, solo:false },
-    { id:'arp',    role:'arp',    name:'아르페지오', inst:'guitar', vol:0.42, pan: -0.22, mute:false, solo:false }
+    { id:'melody', role:'melody', name:'멜로디', inst:'piano',  vol:0.85, pan:-0.08, mute:false, solo:false, locked:false },
+    { id:'chords', role:'chords', name:'코드',   inst:'strings',vol:0.62, pan: 0.12, mute:false, solo:false, locked:false },
+    { id:'bass',   role:'bass',   name:'베이스', inst:'bassEl', vol:0.80, pan: 0,    mute:false, solo:false, locked:false },
+    { id:'drums',  role:'drums',  name:'드럼',   inst:'kit-cr78',vol:0.85, pan: 0,   mute:false, solo:false, locked:false },
+    { id:'arp',    role:'arp',    name:'아르페지오', inst:'guitar', vol:0.42, pan: -0.22, mute:false, solo:false, locked:false },
+    { id:'vocal',  role:'vocal',  name:'보컬',   inst:'vox-ooh', vol:0.34, pan: 0.04, mute:false, solo:false, locked:false }
   ],
   trackOpts: {
     melody: ['piano','ep','flute','lead'],
     chords: ['strings','pad','organ','ep'],
     bass:   ['bassEl','bassSyn'],
     drums:  ['kit-cr78','kit-acoustic','kit-kpr77','kit-linn','kit-r8','kit-stark'],
-    arp:    ['guitar','harp','xylo','piano']
+    arp:    ['guitar','harp','xylo','piano'],
+    vocal:  ['vox-ooh','vox-aah','vox-chops']
   },
-  master: { low:1, mid:0, high:2, reverb:28, warmth:18, volume:80, limiter:true }
+  master: { low:1, mid:0, high:2, reverb:28, warmth:18, volume:80, limiter:true, tone:16000 },
+
+  /* v1~v8 — 감정 패드 · 코드 롤링 · 사이드체인 · A/B */
+  xy: { x: 0.68, y: 0.62 },
+  roll: 30, pump: true,
+  snap: { A: null, B: null }, snapActive: 'A',
+
+  /* v8 — 영상 싱크 · 내레이션 덕킹 · 연주 · 환경음 · 공유 */
+  videoDur: 30, hasVideo: false,
+  duck: true, duckDepth: 60,
+  script: [
+    '네온 불빛 번지는 밤의 해안 도로 위로',
+    '젖어든 아스팔트 위에 흐르는 우리만의 멜로디',
+    '창문을 열면 불어오는 시원한 밤바람과 파도 소리',
+    '멈추지 않을 이 밤의 리듬 속으로 함께 달려가'
+  ],
+  amb: { rain:0, fire:0, cafe:0, ocean:0 },
+  overdub: false, overdubCursor: 0, kbOct: 4,
+  /* v6 — 프로 연출 */
+  riser: true, breakdown: true
 };
 
 /* ---------------------------------------------------------------- 2. 유틸 */
@@ -326,7 +351,9 @@ function toast(msg, kind){
 var AU = {
   ctx: null, master: null, trackNodes: {}, buffers: {}, pending: {}, instCache: {},
   noise: null, timer: null, step: 0, nextTime: 0, raf: null, started: false, playing: false, endAt: null,
-  loadTotal: 0, loadDone: 0, failed: {}, ready: false
+  loadTotal: 0, loadDone: 0, failed: {}, ready: false,
+  /* v8 — 반주 버스(덕킹 대상) · 내레이션 · 녹화 출력 */
+  musicBus: null, narrSrc: null, narrGain: null, recDest: null, pumpBus: null
 };
 
 function makeCurve(amount){
@@ -363,6 +390,8 @@ function buildMaster(ctx, m){
   var mid = ctx.createBiquadFilter(); mid.type = 'peaking';   mid.frequency.value = 1150; mid.Q.value = 1.1; mid.gain.value = m.mid;
   var hi  = ctx.createBiquadFilter(); hi.type = 'highshelf';  hi.frequency.value = 4200;  hi.gain.value = m.high;
   var warm = ctx.createWaveShaper(); warm.curve = makeCurve(m.warmth); warm.oversample = '2x';
+  var tone = ctx.createBiquadFilter();
+  tone.type = 'lowpass'; tone.frequency.value = m.tone || 16000; tone.Q.value = 0.6;
   var dry = ctx.createGain(); dry.gain.value = 1;
   var wet = ctx.createGain(); wet.gain.value = m.reverb / 100 * 0.9;
   var conv = ctx.createConvolver(); conv.buffer = makeIR(ctx, 2.6, 0.42);
@@ -372,10 +401,10 @@ function buildMaster(ctx, m){
   lim.threshold.value = -1.2; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.09;
   var out = ctx.createGain(); out.gain.value = m.volume / 100;
   inp.connect(low); low.connect(mid); mid.connect(hi); hi.connect(warm);
-  warm.connect(dry); dry.connect(comp);
-  warm.connect(conv); conv.connect(wet); wet.connect(comp);
+  warm.connect(tone); tone.connect(dry); dry.connect(comp);
+  tone.connect(conv); conv.connect(wet); wet.connect(comp);
   comp.connect(lim); lim.connect(out);
-  return { in: inp, out: out, low: low, mid: mid, high: hi, warm: warm, wet: wet, lim: lim, master: out };
+  return { in: inp, out: out, low: low, mid: mid, high: hi, warm: warm, tone: tone, wet: wet, lim: lim, master: out };
 }
 
 function setMasterParam(key, val){
@@ -386,6 +415,7 @@ function setMasterParam(key, val){
   if (key === 'high') AU.master.high.gain.setTargetAtTime(val, AU.ctx.currentTime, 0.03);
   if (key === 'reverb') AU.master.wet.gain.setTargetAtTime(val / 100 * 0.9, AU.ctx.currentTime, 0.03);
   if (key === 'warmth') AU.master.warm.curve = makeCurve(val);
+  if (key === 'tone') AU.master.tone.frequency.setTargetAtTime(val, AU.ctx.currentTime, 0.03);
   if (key === 'volume') AU.master.master.gain.setTargetAtTime(val / 100, AU.ctx.currentTime, 0.03);
   if (key === 'limiter') AU.master.lim.threshold.setTargetAtTime(val ? -1.2 : 0, AU.ctx.currentTime, 0.03);
   void m;
@@ -402,6 +432,15 @@ function ensureAudio(){
   AU.analyser = ctx.createAnalyser(); AU.analyser.fftSize = 256;
   AU.master.out.connect(AU.analyser);
 
+  /* 반주(트랙·환경음)는 이 버스를 거쳐 마스터로 — 내레이션 덕킹은 이 버스만 줄인다 */
+  AU.musicBus = ctx.createGain();
+  AU.musicBus.gain.value = 1;
+  AU.musicBus.connect(AU.master.in);
+  /* 사이드체인 펌핑 — 킥이 칠 때 베이스·코드·보컬만 잠겼다 풀린다 */
+  AU.pumpBus = ctx.createGain();
+  AU.pumpBus.gain.value = 1;
+  AU.pumpBus.connect(AU.musicBus);
+
   S.tracks.forEach(function(t){ attachTrack(t); });
   if (ctx.state === 'suspended') ctx.resume();
   return Promise.resolve(ctx);
@@ -415,7 +454,8 @@ function attachTrack(t){
   var filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = instTone(t.inst);
   if (pan) { gain.connect(pan); pan.connect(filt); pan.pan.value = t.pan || 0; }
   else gain.connect(filt);
-  filt.connect(AU.master.in);
+  var dest = (t.role === 'bass' || t.role === 'chords' || t.role === 'vocal') && AU.pumpBus ? AU.pumpBus : (AU.musicBus || AU.master.in);
+  filt.connect(dest);
   AU.trackNodes[t.id] = { gain: gain, pan: pan, filt: filt };
 }
 function instTone(id){ var d = INST[id]; return d && d.tone ? d.tone : 12000; }
@@ -614,7 +654,14 @@ function synthVoice(ctx, out, def, midi, when, durSec, vel){
   g.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak * sus), when + atk + dec);
   g.gain.setValueAtTime(Math.max(0.0001, peak * sus), holdEnd);
   g.gain.exponentialRampToValueAtTime(0.0001, holdEnd + rel);
-  filt.connect(g); g.connect(out);
+  /* 보컬 패드 — 포먼트(공명) 필터를 한 장 더 걸어 '우/아' 느낌을 만든다 */
+  var tail = filt;
+  if (def.formant) {
+    var fmf = ctx.createBiquadFilter();
+    fmf.type = 'peaking'; fmf.frequency.value = def.formant; fmf.Q.value = 1.6; fmf.gain.value = 9;
+    filt.connect(fmf); tail = fmf;
+  }
+  tail.connect(g); g.connect(out);
 
   var oscs = [];
   function osc(type, detune, level){
@@ -644,6 +691,12 @@ function synthVoice(ctx, out, def, midi, when, durSec, vel){
     try { lfo.stop(holdEnd + rel + 0.06); } catch (e) {}
   } else if (def.synth === 'pad') {
     osc('sawtooth', -8, 0.32); osc('sawtooth', 7, 0.32); osc('triangle', 0, 0.22);
+  } else if (def.synth === 'ooh') {
+    osc('triangle', -7, 0.44); osc('sine', 0, 0.48); osc('triangle', 8, 0.22);
+  } else if (def.synth === 'aah') {
+    osc('sawtooth', -6, 0.30); osc('sawtooth', 6, 0.30); osc('triangle', 0, 0.26);
+  } else if (def.synth === 'chops') {
+    osc('sawtooth', 0, 0.5); osc('square', 9, 0.16);
   } else if (def.synth === 'sub') {
     osc('sine', 0, 0.9); osc('triangle', 0, 0.22);
   } else {
@@ -684,6 +737,11 @@ function totalSteps(){ return S.bars * 16; }
 function stepDur(){ return (60 / S.bpm) / 4; }
 
 function scheduleStep(step, when, stepDurS){
+  /* 구간 전환 라이저 — 섹션이 바뀌기 전 마지막 마디에서 다음 파트로올라가는 스웰 */
+  if (S.riser && step % 16 === 0){
+    var rb = Math.floor(step / 16);
+    if (riserBars().indexOf(rb) > -1) riserFx(AU.ctx, AU.musicBus || AU.master.in, when, 16 * stepDurS);
+  }
   var evs = S.events[step];
   if (!evs || !evs.length) return;
   var anySolo = S.tracks.some(function(t){ return t.solo; });
@@ -692,7 +750,9 @@ function scheduleStep(step, when, stepDurS){
     if (!trk || trk.mute || (anySolo && !trk.solo)) continue;
     var out = trackOutput(trk);
     if (!out) continue;
-    fireEvent(AU.ctx, out, trk, ev, when + (ev.jit || 0) * stepDurS, stepDurS);
+    var at = when + (ev.jit || 0) * stepDurS;
+    if (S.pump && AU.pumpBus && trk.role === 'drums' && ev.row === 'kick') pumpAt(AU.ctx, AU.pumpBus, at);
+    fireEvent(AU.ctx, out, trk, ev, at, stepDurS);
   }
 }
 
@@ -747,6 +807,9 @@ function pausePlayback(){
   AU.playing = false;
   S.isPlaying = false;
   if (AU.timer) { clearInterval(AU.timer); AU.timer = null; }
+  if (AU.pumpBus && AU.ctx){
+    try { AU.pumpBus.gain.cancelScheduledValues(AU.ctx.currentTime); AU.pumpBus.gain.value = 1; } catch (e) {}
+  }
   var n = $('bar-display'); if (n) n.textContent = '01.1';
   S.step = 0;
   setPlayBtn(false);
@@ -860,12 +923,26 @@ function sections(){
   ];
 }
 function barEnergy(bar){
-  var v = S.energyCurve[bar];
+  var v = S.energyCurve && S.energyCurve.length ? S.energyCurve[mapCurveIndex(bar)] : null;
   if (v == null) {
     var sec = sections().filter(function(s){ return bar >= s.start && bar < s.start + s.len; })[0];
     v = sec ? sec.e : .6;
   }
   return clamp(v, .1, 1);
+}
+/* 에너지 곡선은 16칸 기준 — 마디 수가 다르면(영상 길이 맞춤 등) 비율로 당겨 쓴다 */
+function mapCurveIndex(bar){
+  var n = S.energyCurve ? S.energyCurve.length : 16;
+  if (!n) return 0;
+  if (S.bars <= n) return clamp(bar, 0, n - 1);
+  return clamp(Math.round(bar * (n - 1) / Math.max(1, S.bars - 1)), 0, n - 1);
+}
+function curveBars(){ return Math.max(16, S.bars || 16); }
+function curveValueAt(i){
+  if (!S.energyCurve || !S.energyCurve.length) return .5;
+  var idx = S.bars > 16 ? Math.round(i * (S.energyCurve.length - 1) / Math.max(1, curveBars() - 1)) : i;
+  var v = S.energyCurve[clamp(idx, 0, S.energyCurve.length - 1)];
+  return v == null ? .5 : v;
 }
 function sectionOf(bar){
   return sections().filter(function(s){ return bar >= s.start && bar < s.start + s.len; })[0] || { name:'A', e:.6 };
@@ -1045,6 +1122,33 @@ function genArp(seed){
   return out;
 }
 
+/* 보컬 코러스 패드 — Ooh/Aah 는 길게 깔리고, Chops 는 리듬으로 끊어 준다 */
+function genVocal(seed){
+  seedRand((seed || 1) + 101);
+  var trk = S.tracks.filter(function(t){ return t.role === 'vocal'; })[0];
+  var inst = trk ? trk.inst : 'vox-ooh';
+  var out = [];
+  for (var b = 0; b < S.bars; b++){
+    var ch = S.chords[b]; if (!ch || !ch.notes) continue;
+    var e = barEnergy(b);
+    var sec = sectionOf(b);
+    if (sec.name === 'Intro' && e < .55) continue;
+    if (e < .24) continue;
+    var top = ch.notes[ch.notes.length - 1] + 12;
+    var mid = ch.notes[Math.max(0, ch.notes.length - 2)] + 12;
+    if (inst === 'vox-chops'){
+      for (var s = 0; s < 16; s += 2){
+        if (chance(.58)) continue;
+        out.push({ bar:b, step:s, midi: chance(.3) ? top : mid, dur:1, vel: clamp(.24 + e * .2, .2, .62) });
+      }
+    } else {
+      out.push({ bar:b, step:0, midi:top, dur:16, vel: clamp(.24 + e * .2, .2, .6) });
+      if (e > .5) out.push({ bar:b, step:8, midi:mid, dur:8, vel: clamp(.2 + e * .16, .18, .5) });
+    }
+  }
+  return out;
+}
+
 function genDrums(seed){
   seedRand(seed || 4242);
   var kitId = S.tracks.filter(function(t){ return t.role === 'drums'; })[0].inst;
@@ -1090,8 +1194,9 @@ function rebuildEvents(){
   S.chords.forEach(function(ch, b){
     var step = b * 16;
     if (step >= total) return;
-    ch.notes.forEach(function(n){
-      ev[step].push({ t: tIdx.chords, midi: n, dur: 15, vel: .52 });
+    ch.notes.forEach(function(n, ni){
+      /* 코드 롤링 — 위 음으로 갈수록 살짝 늦게 (기타 스트럼처럼) */
+      ev[step].push({ t: tIdx.chords, midi: n, dur: 15, vel: .52, roll: (S.roll / 100) * 0.14 * ni });
     });
   });
   S.notes.forEach(function(n){
@@ -1102,11 +1207,17 @@ function rebuildEvents(){
     var s = n.bar * 16 + n.step;
     if (s < total) ev[s].push({ t: tIdx.bass, midi: n.midi, dur: n.dur || 2, vel: n.vel || .8 });
   });
+  if (tIdx.vocal != null) (S.vocal || []).forEach(function(n){
+    var s = n.bar * 16 + n.step;
+    if (s < total) ev[s].push({ t: tIdx.vocal, midi: n.midi, dur: n.dur || 8, vel: n.vel || .4 });
+  });
   S.arp.forEach(function(n){
     var s = n.bar * 16 + n.step;
     if (s < total) ev[s].push({ t: tIdx.arp, midi: n.midi, dur: n.dur || 1, vel: n.vel || .4 });
   });
   S.drums.forEach(function(n){
+    /* 마지막 마디 드럼 브레이크다운 — 킥만 1·3박에 남긴다 */
+    if (S.breakdown && S.bars > 2 && n.bar === S.bars - 1 && (n.row !== 'kick' || n.step % 8 !== 0)) return;
     var s = n.bar * 16 + n.step;
     if (s < total) ev[s].push({ t: tIdx.drums, row: n.row, dur: 1, vel: n.vel || .8 });
   });
@@ -1121,6 +1232,7 @@ function rebuildEvents(){
         e2.jit = (rand() - 0.5) * 0.09;
         e2.vel = clamp(e2.vel * (1 + (rand() - 0.5) * 0.24), .1, 1);
       }
+      if (e2.roll) e2.jit += e2.roll;
       if (step % 2 === 1) e2.jit += swingUnit;
     });
   });
@@ -1138,6 +1250,7 @@ function composeAll(seed, opts){
   S.bass = genBass((seed || 1) + 11);
   S.arp = genArp((seed || 1) + 23);
   S.drums = genDrums((seed || 1) + 37);
+  S.vocal = genVocal((seed || 1) + 41);
   rebuildEvents();
   refreshStats();
 }
@@ -1177,7 +1290,8 @@ function applyPresetValues(p, keepMood){
   S.key = p.key; S.mode = p.mode; S.bpm = p.bpm; S.bright = p.bright; S.energy = p.energy;
   if (p.swing != null) S.swing = clamp(p.swing, 0, 60);
   var byRole = { melody:p.mel, chords:p.chd, bass:p.bas, drums:p.drm, arp:p.arp || 'guitar' };
-  S.tracks.forEach(function(t){ if (byRole[t.role]) t.inst = byRole[t.role]; else t.inst = t.inst; });
+  /* 잠근 트랙은 프리셋을 바꿔도 악기를 그대로 둔다 */
+  S.tracks.forEach(function(t){ if (t.locked) return; if (byRole[t.role]) t.inst = byRole[t.role]; });
   S.energyCurve = presetEnergyCurve(p);
   if (!keepMood) {
     var mt = $('mood-text'); if (mt) mt.value = p.mood;
@@ -1236,9 +1350,10 @@ function refreshStats(){
   var strip = $('struct-strip');
   if (strip) {
     strip.innerHTML = '';
-    for (var b = 0; b < 16; b++) {
+    var cols = curveBars();
+    for (var b = 0; b < cols; b++) {
       var i2 = el('i');
-      var v = barEnergy(b);
+      var v = curveValueAt(b);
       i2.style.opacity = String(0.32 + v * 0.68);
       i2.style.height = Math.round(3 + v * 11) + 'px';
       i2.style.background = b < S.bars ? 'var(--cyan)' : 'var(--track)';
@@ -1329,12 +1444,15 @@ function renderLoop(plan){
 
   var anySolo = S.tracks.some(function(t){ return t.solo; });
   var nodes = {};
+  /* 사이드체인 펌핑도 오프라인에서 같은 그래프로 */
+  var pump = octx.createGain(); pump.gain.value = 1; pump.connect(master.in);
   S.tracks.forEach(function(t){
     var audible = !t.mute && (!anySolo || t.solo);
     var gain = octx.createGain(); gain.gain.value = audible ? t.vol : 0;
     var pan = octx.createStereoPanner(); pan.pan.value = t.pan || 0;
     var filt = octx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = instTone(t.inst);
-    gain.connect(pan); pan.connect(filt); filt.connect(master.in);
+    gain.connect(pan); pan.connect(filt);
+    filt.connect((t.role === 'bass' || t.role === 'chords' || t.role === 'vocal') ? pump : master.in);
     nodes[t.id] = gain;
   });
 
@@ -1345,12 +1463,18 @@ function renderLoop(plan){
     for (var st = 0; st < arrSteps; st++) {
       var gs = rep * arrSteps + st;
       if (gs >= loopSteps) break;
+      /* 라이저도 오프라인 렌더에 포함 — 저장한 WAV 가 들리는 것과 같아진다 */
+      if (S.riser && gs % 16 === 0){
+        var rbar = Math.floor(gs / 16) % Math.max(1, S.bars);
+        if (riserBars().indexOf(rbar) > -1) riserFx(octx, master.in, gs * sd, 16 * sd);
+      }
       var list = S.events[st];
       if (!list || !list.length) continue;
       for (var i = 0; i < list.length; i++) {
         var ev = list[i], trk = S.tracks[ev.t];
         if (!trk || !nodes[trk.id]) continue;
         var tAt = gs * sd + (ev.jit || 0) * sd;
+        if (S.pump && trk.role === 'drums' && ev.row === 'kick') pumpAt(octx, pump, tAt);
         fireEvent(octx, nodes[trk.id], trk, ev, Math.max(0.001, tAt), sd);
       }
     }
@@ -1496,7 +1620,8 @@ function exportMidi(){
   var t3 = collect('bass', 2, 33);
   var t4 = collect('arp', 3, 24);
   var t5 = collect('drums', 9, 0);
-  [t1, t2, t3, t4, t5].forEach(function(t){ if (t) tracksOut.push(t); });
+  var t6 = collect('vocal', 4, 53);
+  [t1, t2, t3, t4, t5, t6].forEach(function(t){ if (t) tracksOut.push(t); });
   if (!tracksOut.length) { toast('먼저 곡을 만들어 주세요', 'warn'); return; }
 
   var usPerQuarter = Math.round(60000000 / plan.bpm);
@@ -1521,9 +1646,10 @@ function projectSnapshot(){
     v: 1, at: Date.now(), title: S.aiTitle || 'AURA 프로젝트',
     bpm:S.bpm, key:S.key, mode:S.mode, bars:S.bars, preset:S.preset, prog:S.prog, ext:S.ext,
     bright:S.bright, energy:S.energy, swing:S.swing, humanize:S.humanize, fill:S.fill,
-    energyCurve:S.energyCurve, chords:S.chords, notes:S.notes, bass:S.bass, arp:S.arp, drums:S.drums,
-    hum:S.hum, tracks:S.tracks.map(function(t){ return { id:t.id, inst:t.inst, vol:t.vol, pan:t.pan, mute:t.mute, solo:t.solo }; }),
-    master:S.master, loop:S.loop
+    energyCurve:S.energyCurve, chords:S.chords, notes:S.notes, bass:S.bass, arp:S.arp, drums:S.drums, vocal:S.vocal,
+    hum:S.hum, tracks:S.tracks.map(function(t){ return { id:t.id, inst:t.inst, vol:t.vol, pan:t.pan, mute:t.mute, solo:t.solo, locked:!!t.locked }; }),
+    master:S.master, loop:S.loop, riser:S.riser, breakdown:S.breakdown,
+    amb:S.amb, script:S.script, duck:S.duck, duckDepth:S.duckDepth, xy:S.xy, roll:S.roll, pump:S.pump
   };
 }
 function applyProject(p){
@@ -1538,11 +1664,21 @@ function applyProject(p){
   S.energyCurve = p.energyCurve && p.energyCurve.length === 16 ? p.energyCurve : defaultCurve('standard');
   S.chords = p.chords || []; S.notes = p.notes || []; S.bass = p.bass || []; S.arp = p.arp || [];
   S.drums = p.drums || []; S.hum = p.hum || new Array(16).fill(null);
+  S.vocal = p.vocal || [];
+  if (p.riser != null) S.riser = !!p.riser;
+  if (p.breakdown != null) S.breakdown = !!p.breakdown;
+  if (p.amb) ['rain','fire','cafe','ocean'].forEach(function(k){ if (p.amb[k] != null) S.amb[k] = clamp(+p.amb[k] || 0, 0, 100); });
+  if (Array.isArray(p.script) && p.script.length) S.script = p.script.map(String).slice(0, 24);
+  if (p.duck != null) S.duck = !!p.duck;
+  if (p.duckDepth != null) S.duckDepth = clamp(+p.duckDepth || 60, 20, 85);
+  if (p.xy && p.xy.x != null && p.xy.y != null) S.xy = { x:clamp(+p.xy.x, 0, 1), y:clamp(+p.xy.y, 0, 1) };
+  if (p.roll != null) S.roll = clamp(+p.roll || 0, 0, 100);
+  if (p.pump != null) S.pump = !!p.pump;
   S.master = Object.assign(S.master, p.master || {});
   S.loop = p.loop || S.loop;
   if (p.tracks) p.tracks.forEach(function(t){
     var cur = S.tracks.filter(function(x){ return x.id === t.id; })[0];
-    if (cur) { cur.inst = t.inst || cur.inst; cur.vol = t.vol != null ? t.vol : cur.vol; cur.pan = t.pan != null ? t.pan : cur.pan; cur.mute = !!t.mute; cur.solo = !!t.solo; }
+    if (cur) { cur.inst = t.inst || cur.inst; cur.vol = t.vol != null ? t.vol : cur.vol; cur.pan = t.pan != null ? t.pan : cur.pan; cur.mute = !!t.mute; cur.solo = !!t.solo; cur.locked = !!t.locked; }
   });
   if (p.title) { S.aiTitle = p.title; }
   rebuildEvents();
@@ -1615,24 +1751,25 @@ function drawEnergy(){
   var f = fitCanvas(cv); if (!f) return;
   var c = f.c, W = f.w, H = f.h, d = f.d, P = pal();
   c.fillStyle = P.bg; c.fillRect(0, 0, W, H);
-  var barW = W / 16, pad = 8 * d;
+  var cols = curveBars();
+  var barW = W / cols, pad = 8 * d;
   c.font = '600 ' + (9.5 * d) + 'px Pretendard, sans-serif';
-  for (var i = 0; i < 16; i++) {
+  for (var i = 0; i < cols; i++) {
     var on = i < S.bars;
     c.strokeStyle = i % 4 === 0 ? P.beat : P.gridSoft;
     c.beginPath(); c.moveTo(i * barW, 0); c.lineTo(i * barW, H); c.stroke();
     if (i % 4 === 0) { c.fillStyle = P.tx2; c.fillText('BAR ' + (i + 1), i * barW + 4 * d, 13 * d); }
   }
-  var curBar = AU.playing ? Math.floor(S.step / 16) : -1;
-  for (var b = 0; b < 16; b++) {
-    var v = S.energyCurve[b] == null ? .5 : S.energyCurve[b];
+  var curBar = AU.playing ? Math.floor(S.step / 16) % Math.max(1, S.bars) : -1;
+  for (var b = 0; b < cols; b++) {
+    var v = curveValueAt(b);
     var bh = Math.max(4 * d, v * (H - 26 * d));
     c.fillStyle = b === curBar ? P.barOn : (b < S.bars ? P.bar : 'rgba(148,163,184,.12)');
     c.fillRect(b * barW + 3 * d, H - bh, barW - 6 * d, bh);
   }
   c.strokeStyle = P.line; c.lineWidth = 1.6 * d; c.beginPath();
-  for (var k = 0; k < 16; k++) {
-    var vv = S.energyCurve[k] == null ? .5 : S.energyCurve[k];
+  for (var k = 0; k < cols; k++) {
+    var vv = curveValueAt(k);
     var x = k * barW + barW / 2, y = H - Math.max(4 * d, vv * (H - 26 * d));
     if (k === 0) c.moveTo(x, y); else c.lineTo(x, y);
   }
@@ -1715,6 +1852,12 @@ function drawDrums(){
   }
   var lab = $('drum-bar-label');
   if (lab) lab.textContent = (S.drumBar + 1) + '마디';
+  /* 지금 소리 나는 16분 칸 표시 */
+  if (AU.playing && Math.floor(S.step / 16) % Math.max(1, S.bars) === S.drumBar) {
+    var live = S.step % 16;
+    c.strokeStyle = 'rgba(244,63,94,.9)'; c.lineWidth = 1.6 * d;
+    c.strokeRect(gutter + live * cw + 0.8 * d, 0, cw - 1.6 * d, H);
+  }
 }
 
 var HUM_LOW = 60, HUM_HIGH = 76;
@@ -1744,6 +1887,7 @@ function drawHum(){
 
 function drawAll(){
   drawEnergy(); drawRoll(); drawDrums(); drawHum();
+  if (typeof drawXYPad === 'function') drawXYPad();
 }
 
 /* ---------------------------------------------------------------- 7. 입력 처리 */
@@ -1911,6 +2055,7 @@ function renderMixer(){
       '<div class="top"><div class="row" style="gap:5px;min-width:0;">' +
         '<span class="name">' + t.name + '</span>' + slotBadge(t.inst) +
       '</div><div class="ms">' +
+        '<button class="lock' + (t.locked ? ' on' : '') + '" data-lock="' + i + '" aria-label="트랙 잠금" title="잠그면 리믹스에서 제외">' + (t.locked ? '🔒' : '🔓') + '</button>' +
         '<button class="m' + (t.mute ? ' on' : '') + '" data-mute="' + i + '" aria-label="음거">M</button>' +
         '<button class="s' + (t.solo ? ' on' : '') + '" data-solo="' + i + '" aria-label="솔로">S</button>' +
       '</div></div>' +
@@ -1928,6 +2073,13 @@ function renderMixer(){
     '</div>';
   }).join('');
 
+  box.querySelectorAll('[data-lock]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var t = S.tracks[+b.dataset.lock]; t.locked = !t.locked;
+      renderMixer(); saveSettings();
+      toast(t.name + ' 트랙을 ' + (t.locked ? '잠갔습니다 🔒 (리믹스에서 제외)' : '풀었습니다 🔓'));
+    });
+  });
   box.querySelectorAll('[data-mute]').forEach(function(b){
     b.addEventListener('click', function(){
       var t = S.tracks[+b.dataset.mute]; t.mute = !t.mute; refreshMix(); renderMixer();
@@ -2182,12 +2334,18 @@ function switchTab(name){
   Array.prototype.forEach.call(document.querySelectorAll('.tabbtn'), function(b){
     b.classList.toggle('on', b.dataset.tab === name);
   });
-  ['compose','seq','hum','mix','export'].forEach(function(id){
-    var sec = $('tab-' + id);
-    if (sec) sec.classList.toggle('hidden', id !== name);
+  Array.prototype.forEach.call(document.querySelectorAll('main > section'), function(sec){
+    sec.classList.toggle('hidden', sec.id !== 'tab-' + name);
   });
-  setTimeout(function(){ drawAll(); }, 40);
-  if (name === 'mix' && !AU.ctx) { /* 첫 제스처에서 엔진 준비 */ }
+  /* 영상 탭을 떠나면 미리보기를 멈춘다 — 다른 작업과 동시에 디코딩하지 않게 */
+  if (name !== 'video' && typeof pauseVideoPreview === 'function') pauseVideoPreview();
+  setTimeout(function(){
+    drawAll();
+    if (name === 'play' && typeof renderDrumSeq === 'function') renderDrumSeq();
+    if (name === 'narr' && typeof renderTeleprompter === 'function') renderTeleprompter();
+    if (name === 'mix' && typeof renderAmb === 'function') { renderAmb(); ambApply(); }
+    if (name === 'video' && typeof drawVideoPoster === 'function') drawVideoPoster();
+  }, 40);
 }
 
 /* ---------------------------------------------------------------- 9. AI 작곡 */
@@ -2531,7 +2689,9 @@ function saveSettings(){
       bpm:S.bpm, key:S.key, mode:S.mode, preset:S.preset, prog:S.prog, ext:S.ext,
       bright:S.bright, energy:S.energy, swing:S.swing, humanize:S.humanize, fill:S.fill,
       master:S.master, loop:S.loop, exactSec:S.exactSec,
-      tracks:S.tracks.map(function(t){ return { id:t.id, inst:t.inst, vol:t.vol, pan:t.pan, mute:t.mute, solo:t.solo }; })
+      script:S.script, amb:S.amb, duck:S.duck, duckDepth:S.duckDepth, kbOct:S.kbOct,
+      xy:S.xy, roll:S.roll, pump:S.pump, riser:S.riser, breakdown:S.breakdown,
+      tracks:S.tracks.map(function(t){ return { id:t.id, inst:t.inst, vol:t.vol, pan:t.pan, mute:t.mute, solo:t.solo, locked:!!t.locked }; })
     }));
   } catch (e) {}
 }
@@ -2556,9 +2716,21 @@ function loadSettings(){
     if (s.master) S.master = Object.assign(S.master, s.master);
     if (s.loop) S.loop = s.loop;
     if (s.exactSec != null) S.exactSec = !!s.exactSec;
+    if (Array.isArray(s.script) && s.script.length) S.script = s.script.map(String).slice(0, 24);
+    if (s.amb && typeof s.amb === 'object') {
+      ['rain','fire','cafe','ocean'].forEach(function(k){ if (s.amb[k] != null) S.amb[k] = clamp(+s.amb[k] || 0, 0, 100); });
+    }
+    if (s.duck != null) S.duck = !!s.duck;
+    if (s.duckDepth != null) S.duckDepth = clamp(+s.duckDepth || 60, 20, 85);
+    if (s.kbOct != null) S.kbOct = clamp(+s.kbOct || 4, 2, 6);
+    if (s.xy && s.xy.x != null && s.xy.y != null) S.xy = { x: clamp(+s.xy.x, 0, 1), y: clamp(+s.xy.y, 0, 1) };
+    if (s.roll != null) S.roll = clamp(+s.roll || 0, 0, 100);
+    if (s.pump != null) S.pump = !!s.pump;
+    if (s.riser != null) S.riser = !!s.riser;
+    if (s.breakdown != null) S.breakdown = !!s.breakdown;
     if (s.tracks) s.tracks.forEach(function(t){
       var cur = S.tracks.filter(function(x){ return x.id === t.id; })[0];
-      if (cur) { cur.inst = t.inst || cur.inst; cur.vol = t.vol != null ? t.vol : cur.vol; cur.pan = t.pan != null ? t.pan : cur.pan; cur.mute = !!t.mute; cur.solo = !!t.solo; }
+      if (cur) { cur.inst = t.inst || cur.inst; cur.vol = t.vol != null ? t.vol : cur.vol; cur.pan = t.pan != null ? t.pan : cur.pan; cur.mute = !!t.mute; cur.solo = !!t.solo; cur.locked = !!t.locked; }
     });
   } catch (e) {}
 }
@@ -2593,6 +2765,11 @@ function applyStateToUI(){
   $('btn-theme-toggle').textContent = isLight() ? '☀️' : '🌙';
   var mt = $('metaThemeColor'); if (mt) mt.setAttribute('content', isLight() ? '#eef1f8' : '#0b0f1a');
   $('roll-zoom').textContent = S.rollBars === 2 ? '4마디' : '2마디';
+  var rs = $('roll-slider'); if (rs) rs.value = S.roll;
+  var rv = $('roll-val'); if (rv) rv.textContent = S.roll;
+  if (typeof syncV8Controls === 'function') syncV8Controls();
+  if (typeof syncV6Controls === 'function') syncV6Controls();
+  if (typeof drawXYPad === 'function') drawXYPad();
 }
 
 function warmUp(){
@@ -2622,6 +2799,19 @@ function boot(){
   refreshLoopInfo();
   updateSamplerStatus();
   drawAll();
+
+  /* 공유 링크(#song=...)로 열었으면 그 곡으로 복원 */
+  if (typeof decodeSongFromHash === 'function' && decodeSongFromHash()) {
+    syncPresetUI(); applyStateToUI(); renderMixer(); refreshStats(); refreshLoopInfo(); drawAll();
+    if (typeof renderTeleprompter === 'function') renderTeleprompter();
+    if (typeof renderDrumSeq === 'function') renderDrumSeq();
+    if (typeof renderAmb === 'function') renderAmb();
+    if (AU.ctx && typeof ambApply === 'function') ambApply();
+    toast('공유 링크의 곡을 불러왔습니다', 'ok');
+  }
+  if (typeof initV8 === 'function') initV8();
+  if (typeof initV6 === 'function') initV6();
+  if (typeof initExtras === 'function') initExtras();
 
   /* 리사이즈 */
   var rt = null;
@@ -2663,7 +2853,7 @@ function boot(){
   /* 매니페스트 바로가기(?tab=hum 등) */
   try {
     var q = new URLSearchParams(location.search), tb = q.get('tab');
-    if (tb && ['compose','seq','hum','mix','export'].indexOf(tb) >= 0) switchTab(tb);
+    if (tb && ['compose','seq','play','hum','narr','video','mix','export'].indexOf(tb) >= 0) switchTab(tb);
   } catch (e) {}
 }
 
@@ -2683,11 +2873,31 @@ window.Aura = {
   exportWav: exportWav,
   exportMidi: exportMidi,
   switchTab: switchTab,
+  share: function(){ return encodeSongToHash(); },
+  shareNow: function(){ return shareSong(); },
+  fitVideo: autoFitSongFormToVideo,
+  mux: function(sec){ return exportMuxedVideoWithBgm(sec); },
+  sampleDuck: playSampleNarrationCadence,
+  toggleDrumCell: function(row, step){ return drumToggle(row, step); },
+  playKey: function(midi){ return playLiveNote(midi); },
+  amb: ambApply,
+  remix: function(){ return mutateArrangement(); },
+  photoScene: function(scene){ return analyzePhoto(null, scene); },
   drawAll: drawAll,
   debug: {
     events: function(){ return S.eventCount; },
     notes: function(){ return S.notes.length; },
     drums: function(){ return S.drums.length; },
+    v6: function(){
+      return {
+        vocal: (S.vocal || []).length,
+        tracks: S.tracks.map(function(t){ return t.role + ':' + t.inst + (t.locked ? '(🔒)' : '') + (t.mute ? '(mute)' : ''); }),
+        riserBars: typeof riserBars === 'function' ? riserBars() : null,
+        pump: S.pump, riser: S.riser, breakdown: S.breakdown,
+        xy: S.xy, roll: S.roll, tone: S.master.tone,
+        library: (function(){ try { return JSON.parse(localStorage.getItem('aura_library') || '[]').length; } catch (e) { return -1; } })()
+      };
+    },
     hum: function(){ return S.hum.filter(function(x){ return x != null; }).length; },
     presets: function(){
       return PRESETS.map(function(p){
@@ -2720,6 +2930,1586 @@ window.Aura = {
   }
 };
 
+/* 부팅은 마지막 조각(17_features.js)에서 호출한다 — v8 기능 초기화 순서 보장 */
+void boot;
+
+/* ---------------------------------------------------------------- 12. v8 기능
+   AURA Studio v8 의 쓸만한 기능을 이 엔진에 맞춰 이식했다.
+   · 영상(MP4) 싱크 + 길이 맞춤 + 영상·BGM 합본 저장
+   · 내레이션 녹음 · 텔레프롬프터 · 자동 덕킹
+   · 16스텝 드럼 시퀀서 · 2옥타브 실시간 건반(오버더빙)
+   · 배경 환경음(앰비언스) · 곡 공유 링크(#song=)
+   · 폰(412×915)에서 무겁지 않게: 필요한 순간에만 노드를 만들고, 탭을 떠나면 영상을 멈춘다.
+   ========================================================================== */
+
+function fmtTime(sec){
+  sec = Math.max(0, Number(sec) || 0);
+  var m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+  return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+}
+function escHtml(s){
+  return String(s).replace(/[&<>"]/g, function(c){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c];
+  });
+}
+
+/* =======================================================
+   12-1. 자동 덕킹 (반주 버스만 줄인다 — 목소리는 그대로)
+   ======================================================= */
+var DUCK = { speaking:false };
+
+function duckTarget(){
+  return Math.max(0.18, 1 - (S.duckDepth / 100) * 0.85);
+}
+function setAutoDuckingState(speaking, silent){
+  DUCK.speaking = !!speaking;
+  var active = !!speaking && !!S.duck;
+  var ind = $('duck-state');
+  if (ind){
+    ind.textContent = active ? '🔉 자동 덕킹 작동 중' : (S.duck ? '대기 중' : '덕킹 꺼짐');
+    ind.classList.toggle('on', active);
+  }
+  if (AU.musicBus && AU.ctx){
+    var target = active ? duckTarget() : 1;
+    try { AU.musicBus.gain.setTargetAtTime(target, AU.ctx.currentTime, active ? 0.12 : 0.35); }
+    catch (e) { AU.musicBus.gain.value = target; }
+  }
+  return active;
+}
+function duckGainNow(){
+  return (AU.musicBus && AU.musicBus.gain) ? AU.musicBus.gain.value : 1;
+}
+
+/* =======================================================
+   12-2. 내레이션 녹음
+   ======================================================= */
+var NARR = { rec:null, stream:null, chunks:[], url:null, connected:false };
+
+function connectNarration(){
+  var el = $('narr-audio');
+  if (!el) return Promise.resolve();
+  return ensureAudio().then(function(){
+    if (!AU.narrSrc){
+      try {
+        AU.narrSrc = AU.ctx.createMediaElementSource(el);
+        AU.narrGain = AU.ctx.createGain();
+        AU.narrGain.gain.value = 1;
+        AU.narrSrc.connect(AU.narrGain);
+        AU.narrGain.connect(AU.master.in);   /* 덕킹 버스를 타지 않는다 */
+      } catch (e) { return; }
+    }
+    if (!NARR.connected){
+      NARR.connected = true;
+      el.onplay = function(){ if (S.duck) setAutoDuckingState(true); };
+      el.onpause = function(){ setAutoDuckingState(false); };
+      el.onended = function(){ setAutoDuckingState(false); };
+    }
+  });
+}
+
+function toggleNarrationRecord(){
+  var btn = $('btn-narr-rec');
+  if (NARR.rec && NARR.rec.state === 'recording'){ NARR.rec.stop(); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){
+    toast('이 브라우저는 마이크 녹음을 지원하지 않습니다 — 샘플 목소리로 확인해 보세요', 'warn');
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({ audio:true })
+    .then(function(stream){
+      NARR.stream = stream;
+      NARR.chunks = [];
+      var rec = new MediaRecorder(stream);
+      NARR.rec = rec;
+      rec.ondataavailable = function(e){ if (e.data && e.data.size) NARR.chunks.push(e.data); };
+      rec.onstop = function(){
+        stream.getTracks().forEach(function(t){ try { t.stop(); } catch (e) {} });
+        var type = rec.mimeType || 'audio/webm';
+        var blob = new Blob(NARR.chunks, { type:type });
+        if (NARR.url) { try { URL.revokeObjectURL(NARR.url); } catch (e) {} }
+        NARR.url = URL.createObjectURL(blob);
+        var el = $('narr-audio');
+        if (el){
+          el.src = NARR.url;
+          el.classList.remove('hidden');
+          connectNarration();
+        }
+        if (btn){ btn.classList.remove('recpulse'); btn.textContent = '● 내레이션 녹음'; }
+        setAutoDuckingState(false);
+        var note = $('narr-note');
+        if (note) note.textContent = '녹음 완료 · ' + (blob.size / 1024).toFixed(0) + 'KB · 아래 플레이어로 들으며 반주와 겹쳐 보세요.';
+        toast('내레이션 녹음 완료 · 재생하면 반주가 자동으로 줄어듭니다', 'ok');
+      };
+      rec.start();
+      if (btn){ btn.classList.add('recpulse'); btn.textContent = '■ 녹음 중지'; }
+      setAutoDuckingState(true);
+      if (!AU.playing) startPlayback();
+      toast('녹음 시작 — 텔레프롬프터를 보며 읽어 보세요', 'ok');
+    })
+    .catch(function(){
+      toast('마이크를 열 수 없습니다 — [샘플 목소리]로 덕킹을 확인해 보세요', 'warn');
+    });
+}
+
+function playSampleNarrationCadence(){
+  return ensureAudio().then(function(){
+    if (!AU.playing) startPlayback();
+    var ctx = AU.ctx, now = ctx.currentTime + 0.14;
+    var bus = ctx.createGain(); bus.gain.value = 0.55; bus.connect(AU.master.in);
+    var formant = ctx.createBiquadFilter();
+    formant.type = 'bandpass'; formant.frequency.value = 620; formant.Q.value = 3.2;
+    formant.connect(bus);
+    var syl = [[0,.32,165],[.40,.24,182],[.72,.42,152],[1.40,.30,172],[1.78,.36,190],[2.24,.46,150],[2.95,.32,168],[3.34,.55,143]];
+    syl.forEach(function(s){
+      var o = ctx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(s[2], now + s[0]);
+      o.frequency.linearRampToValueAtTime(s[2] * 0.94, now + s[0] + s[1]);
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, now + s[0]);
+      g.gain.linearRampToValueAtTime(0.5, now + s[0] + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0008, now + s[0] + s[1]);
+      o.connect(g); g.connect(formant);
+      o.start(now + s[0]); o.stop(now + s[0] + s[1] + 0.06);
+    });
+    setAutoDuckingState(true);
+    setTimeout(function(){ setAutoDuckingState(false); }, 4400);
+    toast('샘플 목소리 4.5초 — 반주가 줄어드는지 들어 보세요', 'ok');
+  }).catch(function(e){ toast('재생 실패: ' + (e && e.message || e), 'err'); });
+}
+
+/* =======================================================
+   12-3. 텔레프롬프터
+   ======================================================= */
+function scriptLines(){
+  var lines = (S.script || []).map(function(s){ return String(s); }).filter(function(s){ return s.trim().length; });
+  return lines.length ? lines : ['첫 줄을 적으면 여기에 표시됩니다.'];
+}
+function renderTeleprompter(){
+  var box = $('tp-live'); if (!box) return;
+  var lines = scriptLines();
+  box.innerHTML = lines.map(function(l, i){
+    return '<div class="ln" data-i="' + i + '">' + escHtml(l) + '</div>';
+  }).join('');
+  var ta = $('tp-edit');
+  if (ta && ta.value !== lines.join('\n')) ta.value = lines.join('\n');
+  tpHighlight();
+}
+function tpHighlight(){
+  var box = $('tp-live'); if (!box) return;
+  var lines = scriptLines();
+  var idx = -1;
+  if (AU.playing && S.bars > 0){
+    var bar = Math.floor(S.step / 16) % S.bars;
+    idx = Math.min(lines.length - 1, Math.floor(bar / S.bars * lines.length));
+    var n = box.children[idx];
+    if (n && box.scrollHeight > box.clientHeight){
+      var top = n.offsetTop - box.clientHeight / 2 + n.offsetHeight / 2;
+      box.scrollTop = Math.max(0, top);
+    }
+  }
+  Array.prototype.forEach.call(box.children, function(el, i){
+    el.classList.toggle('now', i === idx);
+  });
+}
+function generateScriptFromMood(){
+  var mood = ($('mood-text') && $('mood-text').value || '').trim() || '고요한 밤의 선율';
+  S.script = [
+    '오늘의 이야기: ' + mood,
+    '깊어가는 밤, 잔잔한 리듬 위로 떠오르는 작은 기억들',
+    '잠시 모든 걱정을 내려놓고 이 음악의 흐름에 몸을 맡겨 보세요',
+    '당신의 하루 끝이 따뜻하고 평온하기를 바랍니다'
+  ];
+  renderTeleprompter(); saveSettings();
+  toast('분위기에 맞는 대본 초안을 만들었습니다', 'ok');
+}
+
+/* =======================================================
+   12-4. 16스텝 드럼 시퀀서
+   ======================================================= */
+function drumRowList(){ return DRUM_ROWS; }
+
+function renderDrumSeq(){
+  var box = $('dseq'); if (!box) return;
+  var rows = drumRowList();
+  var html = '';
+  rows.forEach(function(r){
+    html += '<span class="lb">' + r.label + '</span>';
+    for (var s = 0; s < 16; s++){
+      var on = S.drums.some(function(n){ return n.bar === S.drumBar && n.step === s && n.row === r.id; });
+      html += '<button type="button" data-row="' + r.id + '" data-step="' + s + '"' +
+        ' class="' + (on ? 'on ' : '') + (s % 4 === 0 ? 'beat' : '') + '"' +
+        ' aria-label="' + r.label + ' ' + (s + 1) + '칸" aria-pressed="' + (on ? 'true' : 'false') + '"></button>';
+    }
+  });
+  box.innerHTML = html;
+  Array.prototype.forEach.call(box.querySelectorAll('button[data-step]'), function(b){
+    b.addEventListener('click', function(){ drumToggle(b.dataset.row, +b.dataset.step); });
+  });
+  var lab = $('dseq-bar'); if (lab) lab.textContent = (S.drumBar + 1) + '마디';
+  var kit = $('dseq-kit');
+  var t = S.tracks.filter(function(x){ return x.role === 'drums'; })[0];
+  if (kit && t) kit.textContent = '킷 ' + (INST[t.inst] ? INST[t.inst].name : t.inst) + ' · ' + S.bars + '마디';
+  drumSeqTick();
+}
+
+function drumToggle(row, step){
+  var exists = S.drums.some(function(n){ return n.bar === S.drumBar && n.step === step && n.row === row; });
+  if (exists){
+    S.drums = S.drums.filter(function(n){ return !(n.bar === S.drumBar && n.step === step && n.row === row); });
+  } else {
+    S.drums.push({ bar:S.drumBar, step:step, row:row, vel:.82 });
+    hitPreview(row);
+  }
+  rebuildEvents(); renderDrumSeq(); drawDrums(); refreshStats(); saveSettings();
+  return !exists;
+}
+
+function hitPreview(row){
+  if (!AU.ctx) return;
+  var t = S.tracks.filter(function(x){ return x.role === 'drums'; })[0];
+  if (!t) return;
+  try { fireEvent(AU.ctx, trackOutput(t), t, { row:row, dur:1, vel:.9 }, AU.ctx.currentTime + 0.01, stepDur()); } catch (e) {}
+}
+
+function drumSeqTick(){
+  var box = $('dseq'); if (!box || !box.children.length) return;
+  var barNow = Math.floor(S.step / 16) % Math.max(1, S.bars);
+  var st = S.step % 16;
+  var show = AU.playing && barNow === S.drumBar;
+  Array.prototype.forEach.call(box.querySelectorAll('button[data-step]'), function(b){
+    b.classList.toggle('now', show && +b.dataset.step === st);
+  });
+}
+
+/* =======================================================
+   12-5. 2옥타브 실시간 건반
+   ======================================================= */
+var KB_CHARS = ['a','w','s','e','d','f','t','g','y','h','u','j','k','o','l','p',';','\'',']','z','x','c','v','b'];
+var KB_HIT = {};
+
+function kbBase(){ return 12 * ((S.kbOct || 4) + 1); }   /* C4 = 60 */
+function isWhiteMidi(m){ return [1,3,6,8,10].indexOf(((m % 12) + 12) % 12) < 0; }
+
+function kbCharFor(midi){
+  var i = midi - kbBase();
+  return (i >= 0 && i < KB_CHARS.length) ? KB_CHARS[i] : '';
+}
+
+function renderKeyboard(){
+  var wrap = $('piano'); if (!wrap) return;
+  var base = kbBase();
+  var semis = [];
+  for (var i = 0; i < 24; i++) semis.push(base + i);
+  var whites = semis.filter(isWhiteMidi);
+  var w = 100 / whites.length;
+  var html = '';
+  whites.forEach(function(m){
+    html += '<div class="kbw" data-midi="' + m + '">' + (kbCharFor(m) ? escHtml(kbCharFor(m).toUpperCase()) : '') + '</div>';
+  });
+  semis.filter(function(m){ return !isWhiteMidi(m); }).forEach(function(m){
+    var leftCount = whites.filter(function(x){ return x < m; }).length;
+    var left = leftCount * w - w * 0.30;
+    html += '<div class="kbb" data-midi="' + m + '" style="left:' + left.toFixed(3) + '%">' +
+      (kbCharFor(m) ? escHtml(kbCharFor(m).toUpperCase()) : '') + '</div>';
+  });
+  wrap.innerHTML = html;
+  var oct = $('kb-oct');
+  if (oct) oct.textContent = 'C' + S.kbOct + '–B' + (S.kbOct + 1);
+}
+
+function kbFlash(midi, on){
+  var wrap = $('piano'); if (!wrap) return;
+  var el2 = wrap.querySelector('[data-midi="' + midi + '"]');
+  if (el2) el2.classList.toggle('hit', !!on);
+}
+
+function playLiveNote(midi){
+  midi = Math.round(midi);
+  return ensureAudio().then(function(){
+    var t = S.tracks.filter(function(x){ return x.role === 'melody'; })[0];
+    if (!t) return;
+    var out = trackOutput(t);
+    fireEvent(AU.ctx, out, t, { midi:midi, dur:3, vel:.9 }, AU.ctx.currentTime + 0.01, stepDur());
+    var last = $('kb-last'); if (last) last.textContent = midiToName(midi);
+    kbFlash(midi, true);
+    clearTimeout(KB_HIT[midi]);
+    KB_HIT[midi] = setTimeout(function(){ kbFlash(midi, false); }, 170);
+    if (S.overdub) recordOverdub(midi);
+  }).catch(function(){});
+}
+
+function recordOverdub(midi){
+  var bar, step;
+  if (AU.playing){
+    var gs = AU.step % Math.max(1, S.bars * 16);
+    bar = Math.floor(gs / 16); step = gs % 16;
+  } else {
+    bar = Math.floor(S.overdubCursor / 16) % Math.max(1, S.bars);
+    step = S.overdubCursor % 16;
+    S.overdubCursor = (S.overdubCursor + 1) % Math.max(1, S.bars * 16);
+  }
+  S.notes.push({ bar:bar, step:step, midi:midi, dur:2, vel:.85 });
+  rebuildEvents(); refreshStats();
+  if ($('tab-seq') && !$('tab-seq').classList.contains('hidden')) drawRoll();
+  toast(midiToName(midi) + ' 녹음 · ' + (bar + 1) + '마디 ' + (step + 1) + '칸', 'ok');
+}
+
+function bindKeyboard(){
+  var wrap = $('piano');
+  if (wrap){
+    wrap.addEventListener('pointerdown', function(e){
+      var hit = e.target.closest ? e.target.closest('[data-midi]') : null;
+      if (!hit) return;
+      e.preventDefault();
+      playLiveNote(+hit.dataset.midi);
+    });
+    wrap.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  }
+
+  window.addEventListener('keydown', function(e){
+    if (document.documentElement.classList.contains('pin-locked')) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var tag = (e.target && e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable)) return;
+    if (e.repeat) return;
+    var i = KB_CHARS.indexOf(e.key.toLowerCase());
+    if (i < 0) return;
+    if ($('tab-play').classList.contains('hidden')) return;
+    e.preventDefault();
+    playLiveNote(kbBase() + i);
+  });
+}
+
+function setOverdub(on){
+  S.overdub = !!on;
+  var b = $('btn-overdub');
+  if (b){
+    b.textContent = S.overdub ? '● 오버더빙 ON' : '● 오버더빙 OFF';
+    b.classList.toggle('recpulse', S.overdub);
+  }
+  saveSettings();
+}
+
+/* =======================================================
+   12-6. 배경 환경음 (앰비언스)
+   ======================================================= */
+var AMB = { nodes:{}, buffers:{} };
+
+function makeAmbBuffer(ctx, kind){
+  var len = Math.floor(ctx.sampleRate * 2);
+  var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  var d = buf.getChannelData(0);
+  var b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0,last=0;
+  for (var i = 0; i < len; i++){
+    var white = Math.random() * 2 - 1;
+    if (kind === 'brown'){
+      last = (last + 0.02 * white) / 1.02;
+      d[i] = last * 3.2;
+    } else {
+      b0 = 0.99886*b0 + white*0.0555179; b1 = 0.99332*b1 + white*0.0750759;
+      b2 = 0.96900*b2 + white*0.1538520; b3 = 0.86650*b3 + white*0.3104856;
+      b4 = 0.55000*b4 + white*0.5329522; b5 = -0.7616*b5 - white*0.0168980;
+      d[i] = (b0+b1+b2+b3+b4+b5+b6+white*0.5362) * 0.11;
+      b6 = white * 0.115926;
+    }
+  }
+  return buf;
+}
+
+function ambChain(key){
+  var ctx = AU.ctx; if (!ctx) return null;
+  if (AMB.nodes[key]) return AMB.nodes[key];
+  var kind = (key === 'rain' || key === 'cafe') ? 'pink' : 'brown';
+  var buf = AMB.buffers[key] || (AMB.buffers[key] = makeAmbBuffer(ctx, kind));
+  var src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+  var filt = ctx.createBiquadFilter();
+  if (key === 'rain'){ filt.type = 'bandpass'; filt.frequency.value = 1500; filt.Q.value = 0.55; }
+  else if (key === 'fire'){ filt.type = 'lowpass'; filt.frequency.value = 900; filt.Q.value = 0.8; }
+  else if (key === 'cafe'){ filt.type = 'bandpass'; filt.frequency.value = 560; filt.Q.value = 0.9; }
+  else { filt.type = 'lowpass'; filt.frequency.value = 420; filt.Q.value = 0.7; }
+  var out = ctx.createGain(); out.gain.value = 0;
+  src.connect(filt);
+  if (key === 'ocean'){
+    /* 파도 — 느린 LFO 로 볼륨을 흔든다 (출력 게인은 0에서 시작하므로 꺼져 있으면 들리지 않는다) */
+    var mod = ctx.createGain(); mod.gain.value = 0.62;
+    filt.connect(mod);
+    mod.connect(out);
+    var lfo = ctx.createOscillator(); lfo.frequency.value = 0.08;
+    var lg = ctx.createGain(); lg.gain.value = 0.34;
+    lfo.connect(lg); lg.connect(mod.gain); lfo.start(0);
+    AMB.nodes[key] = { src:src, filt:filt, gain:out, lfo:lfo };
+  } else {
+    filt.connect(out);
+    AMB.nodes[key] = { src:src, filt:filt, gain:out };
+  }
+  out.connect(AU.musicBus || AU.master.in);
+  src.start(0);
+  return AMB.nodes[key];
+}
+
+function ambApply(){
+  if (!AU.ctx) return;
+  Object.keys(S.amb).forEach(function(k){
+    var v = clamp(+S.amb[k] || 0, 0, 100) / 100;
+    if (!v && !AMB.nodes[k]) return;        /* 0이면 만들지 않는다 — 가벼운 노드 관리 */
+    var n = ambChain(k); if (!n) return;
+    var target = v * 0.22;
+    try { n.gain.gain.setTargetAtTime(target, AU.ctx.currentTime, 0.25); }
+    catch (e) { n.gain.gain.value = target; }
+  });
+  var badge = $('amb-badge');
+  if (badge){
+    var on = Object.keys(S.amb).some(function(k){ return +S.amb[k] > 0; });
+    badge.textContent = on ? '켜짐' : '꺼짐';
+    badge.classList.toggle('on', on);
+  }
+}
+
+function renderAmb(){
+  ['rain','fire','cafe','ocean'].forEach(function(k){
+    var sl = $('amb-' + k);
+    if (sl) sl.value = +S.amb[k] || 0;
+    var lb = $('amb-' + k + '-val');
+    if (lb) lb.textContent = (+S.amb[k] || 0) + '%';
+  });
+  var badge = $('amb-badge');
+  if (badge){
+    var on = Object.keys(S.amb).some(function(k){ return +S.amb[k] > 0; });
+    badge.textContent = on ? '켜짐' : '꺼짐';
+    badge.classList.toggle('on', on);
+  }
+}
+
+function setAmb(key, val){
+  S.amb[key] = clamp(Math.round(val), 0, 100);
+  var sl = $('amb-' + key); if (sl) sl.value = S.amb[key];
+  var lb = $('amb-' + key + '-val'); if (lb) lb.textContent = S.amb[key] + '%';
+  if (!AU.ctx) {
+    ensureAudio().then(function(){ ambApply(); }).catch(function(){});
+  } else ambApply();
+  saveSettings();
+}
+
+/* =======================================================
+   12-7. 영상(MP4) 싱크 · 합본 저장
+   ======================================================= */
+var VID = { url:null, dur:30, has:false, raf:null };
+var MUX = { running:false, rec:null, timer:null };
+
+function videoEl(){ return $('sync-video'); }
+
+function drawVideoPoster(){
+  var cv = $('demo-canvas'); if (!cv) return;
+  var c = cv.getContext('2d'), W = cv.width, H = cv.height;
+  var g = c.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, '#0b1020'); g.addColorStop(0.55, '#1e1b4b'); g.addColorStop(1, '#0b1020');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  var cx = W / 2, cy = H / 2;
+  c.strokeStyle = 'rgba(34,211,238,.35)'; c.lineWidth = 2;
+  for (var r = 34; r < 150; r += 26){ c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke(); }
+  c.fillStyle = 'rgba(34,211,238,.92)';
+  c.beginPath(); c.arc(cx, cy, 20, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#e2e8f0';
+  c.font = '800 ' + Math.round(W * 0.036) + 'px Pretendard, sans-serif';
+  c.textAlign = 'center';
+  c.fillText('내 영상을 열면 여기에 미리 보입니다', cx, H - 28);
+  c.textAlign = 'left';
+}
+
+function loadVideoFile(file){
+  var el = videoEl();
+  if (!el || !file) return;
+  if (!window.URL || !URL.createObjectURL){ toast('이 브라우저는 영상 미리보기를 지원하지 않습니다', 'warn'); return; }
+  if (VID.url) { try { URL.revokeObjectURL(VID.url); } catch (e) {} }
+  VID.url = URL.createObjectURL(file);
+  VID.has = true;
+  S.hasVideo = true;
+  el.src = VID.url;
+  el.classList.remove('hidden');
+  var dc = $('demo-canvas'); if (dc) dc.classList.add('hidden');
+  el.onloadedmetadata = function(){
+    VID.dur = el.duration && isFinite(el.duration) ? el.duration : 30;
+    S.videoDur = VID.dur;
+    var b = $('video-dur'); if (b) b.textContent = fmtTime(VID.dur) + ' · ' + file.name.slice(0, 14);
+    var note = $('fit-note');
+    var barSec = 4 * 60 / S.bpm;
+    if (note) note.textContent = '영상 ' + fmtTime(VID.dur) + ' · 맞추면 약 ' +
+      clamp(Math.round(VID.dur / barSec / 2) * 2, 4, 32) + '마디가 됩니다.';
+    toast('영상 로드 완료 · ' + fmtTime(VID.dur), 'ok');
+    drawVideoPoster();
+  };
+  el.onerror = function(){
+    VID.has = false; S.hasVideo = false;
+    toast('이 브라우저에서 열 수 없는 영상입니다 (MP4/H.264 · WebM 권장)', 'err');
+    useDemoVideo();
+  };
+  try { el.load(); } catch (e) {}
+}
+
+function useDemoVideo(){
+  var el = videoEl();
+  if (el){ try { el.pause(); } catch (e) {} el.classList.add('hidden'); el.removeAttribute('src'); }
+  var dc = $('demo-canvas'); if (dc) dc.classList.remove('hidden');
+  VID.has = false; VID.dur = 30; S.hasVideo = false; S.videoDur = 30;
+  var b = $('video-dur'); if (b) b.textContent = '00:30 · 데모';
+  var note = $('fit-note'); if (note) note.textContent = '데모 클립 · 영상을 열면 길이를 읽어 곡 구조를 다시 짭니다.';
+  drawVideoPoster();
+  toast('데모 클립으로 돌아왔습니다');
+}
+
+function pauseVideoPreview(){
+  if (MUX.running) return;               /* 합본 녹화 중에는 멈추지 않는다 */
+  var el = videoEl();
+  if (el && !el.paused){ try { el.pause(); } catch (e) {} }
+}
+
+function autoFitSongFormToVideo(dur){
+  return ensureAudio().then(function(){
+    var target = Number(dur) || (VID.has && VID.dur ? VID.dur : (S.videoDur || 30));
+    var barSec = 4 * 60 / S.bpm;
+    var bars = clamp(Math.round((target / barSec) / 2) * 2, 4, 32);
+    S.bars = bars; S.rollStart = 0; S.drumBar = 0;
+    S.chords = [];
+    buildChords(20261127);
+    composeAll(20261127, {});
+    Array.prototype.forEach.call(document.querySelectorAll('[data-bars]'), function(b){
+      b.classList.toggle('on', +b.dataset.bars === S.bars);
+    });
+    syncPresetUI(); refreshStats(); refreshLoopInfo(); drawAll();
+    if (typeof renderDrumSeq === 'function') renderDrumSeq();
+    var real = bars * barSec;
+    var note = $('fit-note');
+    if (note) note.textContent = '영상 ' + fmtTime(target) + ' → ' + bars + '마디(' + fmtTime(real) + ')로 곡을 다시 짰습니다.';
+    toast('영상 길이에 맞춰 ' + bars + '마디로 곡을 구성했습니다', 'ok');
+    return { bars:bars, seconds:real };
+  });
+}
+
+function pickMuxMime(){
+  if (!window.MediaRecorder) return '';
+  var list = [
+    /* MP4 는 H.264 를 실제로 녹화할 수 있을 때만 고른다 — 코드 없이 'video/mp4' 만 지원한다고 답하는
+       브라우저에서 만들면 재생이 안 되는 파일이 나온다. */
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm'
+  ];
+  for (var i = 0; i < list.length; i++){
+    try { if (MediaRecorder.isTypeSupported(list[i])) return list[i]; } catch (e) {}
+  }
+  return '';
+}
+
+function setMuxProgress(pct, msg){
+  var box = $('mux-prog');
+  if (box){
+    box.style.display = (pct == null) ? 'none' : 'block';
+    if (pct != null && box.firstElementChild) box.firstElementChild.style.width = clamp(pct, 0, 100) + '%';
+  }
+  if (msg){ var n = $('mux-note'); if (n) n.textContent = msg; }
+}
+
+function exportMuxedVideoWithBgm(limitSec){
+  if (MUX.running){ toast('이미 합본을 녹화하고 있습니다', 'warn'); return Promise.resolve(null); }
+  if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream){
+    toast('이 브라우저는 영상 녹화를 지원하지 않습니다 (Chrome · 삼성 인터넷 최신 권장)', 'warn');
+    return Promise.resolve(null);
+  }
+  return ensureAudio()
+    .then(function(){ return loadNeeded(null); })
+    .then(function(){
+      return new Promise(function(resolve){
+        stopPlayback();
+        var el = videoEl();
+        var demo = !VID.has;
+        var vw = 720, vh = 405;
+        if (!demo && el && el.videoWidth && el.videoHeight){
+          var ar = el.videoWidth / el.videoHeight;
+          if (ar >= 1){ vw = 720; vh = Math.max(2, Math.round(720 / ar / 2) * 2); }
+          else { vh = 720; vw = Math.max(2, Math.round(720 * ar / 2) * 2); }
+        }
+        var cv = document.createElement('canvas');
+        cv.width = vw; cv.height = vh;
+        var c = cv.getContext('2d');
+        var dest = AU.ctx.createMediaStreamDestination();
+        AU.master.out.connect(dest);
+        var stream = new MediaStream(
+          cv.captureStream(30).getVideoTracks().concat(dest.stream.getAudioTracks())
+        );
+        var mime = pickMuxMime();
+        var rec = null;
+        try {
+          rec = mime
+            ? new MediaRecorder(stream, { mimeType:mime, videoBitsPerSecond:3500000, audioBitsPerSecond:128000 })
+            : new MediaRecorder(stream, { videoBitsPerSecond:3500000 });
+        } catch (e){
+          try { AU.master.out.disconnect(dest); } catch (e2) {}
+          toast('녹화기를 시작할 수 없습니다: ' + (e && e.message || e), 'err');
+          resolve(null); return;
+        }
+        MUX.rec = rec;
+        var chunks = [];
+        rec.ondataavailable = function(e){ if (e.data && e.data.size) chunks.push(e.data); };
+
+        var barSec = 4 * 60 / S.bpm;
+        var songSec = S.bars * barSec;
+        var targetSec = Math.max(2, Math.min(limitSec || 120, demo ? songSec : Math.min(VID.dur || songSec, songSec + 2)));
+        var overlay = $('chk-overlay') ? $('chk-overlay').checked : true;
+        var running = true, phase = 0, rafId = 0;
+
+        function frame(){
+          if (!running) return;
+          rafId = requestAnimationFrame(frame);
+          phase += 0.05;
+          c.clearRect(0, 0, vw, vh);
+          if (!demo && el && el.readyState >= 2){
+            var s = Math.max(vw / el.videoWidth, vh / el.videoHeight);
+            var dw = el.videoWidth * s, dh = el.videoHeight * s;
+            try { c.drawImage(el, (vw - dw) / 2, (vh - dh) / 2, dw, dh); } catch (e) {}
+          } else {
+            var g = c.createLinearGradient(0, 0, vw, vh);
+            g.addColorStop(0, '#0b1020'); g.addColorStop(0.55, '#1e1b4b'); g.addColorStop(1, '#0b1020');
+            c.fillStyle = g; c.fillRect(0, 0, vw, vh);
+            var r = Math.min(vw, vh) * 0.12;
+            var cy = vh / 2 + Math.sin(phase * 0.7) * r * 0.35;
+            c.fillStyle = 'rgba(34,211,238,.9)';
+            c.beginPath(); c.arc(vw / 2, cy, r, 0, Math.PI * 2); c.fill();
+            c.strokeStyle = 'rgba(167,139,250,.7)'; c.lineWidth = Math.max(2, r * 0.06);
+            c.beginPath(); c.arc(vw / 2, cy, r * 1.55, 0, Math.PI * 2); c.stroke();
+          }
+          if (overlay && AU.analyser){
+            var n = 48, buf = new Uint8Array(AU.analyser.frequencyBinCount);
+            AU.analyser.getByteFrequencyData(buf);
+            var bw = vw / n, base = vh - 6;
+            for (var i = 0; i < n; i++){
+              var v = buf[Math.floor(i * buf.length / n)] / 255;
+              var h = Math.max(2, v * vh * 0.17);
+              c.fillStyle = i % 2 ? 'rgba(167,139,250,.85)' : 'rgba(34,211,238,.85)';
+              c.fillRect(i * bw + 1, base - h, bw - 2, h);
+            }
+            c.fillStyle = 'rgba(255,255,255,.92)';
+            c.font = '800 ' + Math.round(vw * 0.024) + 'px Pretendard, sans-serif';
+            c.fillText('AURA Studio Pro · ' + S.bpm + ' BPM' + (S.aiTitle ? ' · ' + S.aiTitle.slice(0, 18) : ''), Math.round(vw * 0.03), Math.round(vh * 0.075));
+          }
+        }
+
+        rec.onstop = function(){
+          running = false;
+          if (rafId) cancelAnimationFrame(rafId);
+          if (MUX.timer){ clearInterval(MUX.timer); MUX.timer = null; }
+          try { AU.master.out.disconnect(dest); } catch (e) {}
+          var type = (mime && mime.indexOf('mp4') > -1) ? 'video/mp4' : 'video/webm';
+          var ext = type === 'video/mp4' ? 'mp4' : 'webm';
+          var blob = new Blob(chunks, { type:type });
+          MUX.running = false; MUX.rec = null;
+          var badge = $('mux-badge');
+          if (badge){ badge.textContent = blob.size ? '완료' : '실패'; badge.classList.remove('on'); }
+          setMuxProgress(null);
+          if (!blob.size){
+            toast('녹화된 영상이 비어 있습니다 — 다시 시도해 주세요', 'err');
+            resolve(null); return;
+          }
+          var stamp = new Date();
+          var name = 'AURA_muxed_' + (stamp.getMonth() + 1) + pad2(stamp.getDate()) + '_' + S.bpm + 'bpm.' + ext;
+          downloadBlob(blob, name);
+          var note = $('mux-note');
+          if (note) note.textContent = '저장 완료 · ' + name + ' · ' + (blob.size / 1048576).toFixed(1) + 'MB (' + fmtTime(targetSec) + ')';
+          toast('영상 + BGM 합본 저장 완료 · ' + (blob.size / 1048576).toFixed(1) + 'MB (' + ext.toUpperCase() + ')', 'ok');
+          resolve(blob);
+        };
+
+        MUX.running = true;
+        var badge2 = $('mux-badge');
+        if (badge2){ badge2.textContent = '● 녹화 중'; badge2.classList.add('on'); }
+        setMuxProgress(0, '녹화 준비…');
+        try { rec.start(250); } catch (e){
+          MUX.running = false;
+          try { AU.master.out.disconnect(dest); } catch (e2) {}
+          toast('녹화 시작 실패: ' + (e && e.message || e), 'err');
+          resolve(null); return;
+        }
+        startPlayback();
+        if (!demo && el){
+          setTimeout(function(){
+            try { el.currentTime = 0; var p = el.play(); if (p && p.catch) p.catch(function(){}); } catch (e) {}
+          }, 140);
+        }
+        frame();
+        var startedAt = performance.now();
+        MUX.timer = setInterval(function(){
+          var t = (performance.now() - startedAt) / 1000;
+          setMuxProgress(Math.min(100, Math.round(t / targetSec * 100)), '녹화 중 ' + fmtTime(t) + ' / ' + fmtTime(targetSec) + ' — 화면을 켜 두세요');
+          if (t >= targetSec || !AU.playing){
+            if (MUX.timer){ clearInterval(MUX.timer); MUX.timer = null; }
+            if (el && !el.paused) { try { el.pause(); } catch (e) {} }
+            try { if (rec.state !== 'inactive') rec.stop(); } catch (e) {}
+          }
+        }, 200);
+      });
+    })
+    .catch(function(e){
+      MUX.running = false; setMuxProgress(null);
+      toast('합본 저장 실패: ' + (e && e.message || e), 'err');
+      return null;
+    });
+}
+
+/* =======================================================
+   12-8. 곡 공유 링크 (#song=)
+   ======================================================= */
+function b64encodeUtf8(str){
+  return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64decodeUtf8(str){
+  var s = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return decodeURIComponent(escape(atob(s)));
+}
+
+function encodeSongToHash(){
+  var payload = {
+    v: 1,
+    b: S.bpm, k: S.key, md: S.mode, n: S.bars, p: S.preset, g: S.prog, x: S.ext,
+    br: S.bright, en: S.energy, sw: S.swing,
+    c: S.chords.map(function(c){ return [c.deg, c.ext]; }),
+    no: S.notes.map(function(n){ return [n.bar, n.step, n.midi, n.dur || 2, Math.round((n.vel || .8) * 100)]; }),
+    dr: S.drums.map(function(d){ return [d.bar, d.step, d.row, Math.round((d.vel || .8) * 100)]; }),
+    tr: S.tracks.map(function(t){ return [t.inst, Math.round(t.vol * 100), Math.round((t.pan || 0) * 100), t.mute ? 1 : 0, t.solo ? 1 : 0]; }),
+    ms: [S.master.low, S.master.mid, S.master.high, S.master.reverb, S.master.warmth, S.master.volume],
+    am: [S.amb.rain, S.amb.fire, S.amb.cafe, S.amb.ocean],
+    sc: (S.script || []).slice(0, 12),
+    dd: S.duckDepth, dk: S.duck ? 1 : 0,
+    ti: S.aiTitle || ''
+  };
+  return location.origin + location.pathname + '#song=' + b64encodeUtf8(JSON.stringify(payload));
+}
+
+function decodeSongFromHash(){
+  var h = location.hash || '';
+  if (h.indexOf('#song=') !== 0) return false;
+  try {
+    var d = JSON.parse(b64decodeUtf8(h.slice(6)));
+    if (!d || typeof d !== 'object') return false;
+    if (d.b) S.bpm = clamp(+d.b, 60, 170);
+    if (typeof d.k === 'number') S.key = ((d.k % 12) + 12) % 12;
+    if (d.md && SCALES[d.md]) S.mode = d.md;
+    if (d.n) S.bars = clamp(+d.n, 4, 32);
+    if (d.p) S.preset = String(d.p);
+    if (d.g) S.prog = String(d.g);
+    if (d.x) S.ext = String(d.x);
+    if (d.br != null) S.bright = clamp(+d.br, 0, 100);
+    if (d.en != null) S.energy = clamp(+d.en, 0, 100);
+    if (d.sw != null) S.swing = clamp(+d.sw, 0, 60);
+    if (Array.isArray(d.c) && d.c.length){
+      S.chords = d.c.map(function(a){
+        var deg = clamp(a[0] | 0, 0, 6), ext = String(a[1] || '7');
+        var notes = chordVoicing(deg, ext);
+        return { deg:deg, ext:ext, notes:notes, name:chordName(deg, ext), root:notes[0] };
+      });
+    }
+    if (Array.isArray(d.no)) S.notes = d.no.map(function(a){
+      return { bar:clamp(a[0] | 0, 0, S.bars - 1), step:clamp(a[1] | 0, 0, 15), midi:clamp(a[2] | 0, 24, 100), dur:clamp(a[3] || 2, 1, 16), vel:clamp((a[4] || 80) / 100, .1, 1) };
+    });
+    if (Array.isArray(d.dr)) S.drums = d.dr.map(function(a){
+      return { bar:clamp(a[0] | 0, 0, S.bars - 1), step:clamp(a[1] | 0, 0, 15), row:String(a[2]), vel:clamp((a[3] || 80) / 100, .1, 1) };
+    }).filter(function(n){ return DRUM_ROWS.some(function(r){ return r.id === n.row; }); });
+    if (Array.isArray(d.tr)) d.tr.forEach(function(a, i){
+      var t = S.tracks[i]; if (!t) return;
+      if (a[0] && INST[a[0]]) t.inst = a[0];
+      if (a[1] != null) t.vol = clamp(a[1] / 100, 0, 1);
+      if (a[2] != null) t.pan = clamp(a[2] / 100, -1, 1);
+      t.mute = !!a[3]; t.solo = !!a[4];
+    });
+    if (Array.isArray(d.ms)) [ 'low','mid','high','reverb','warmth','volume' ].forEach(function(k, i){
+      if (d.ms[i] != null) S.master[k] = +d.ms[i];
+    });
+    if (Array.isArray(d.am)) S.amb = { rain:+d.am[0] || 0, fire:+d.am[1] || 0, cafe:+d.am[2] || 0, ocean:+d.am[3] || 0 };
+    if (Array.isArray(d.sc) && d.sc.length) S.script = d.sc.slice(0, 12).map(String);
+    if (d.dd != null) S.duckDepth = clamp(+d.dd || 60, 20, 85);
+    if (d.dk != null) S.duck = !!d.dk;
+    if (d.ti) S.aiTitle = String(d.ti);
+    if (!S.chords.length) buildChords(20261127);
+    rebuildEvents();
+    return true;
+  } catch (e){
+    return false;
+  }
+}
+
+function shareSong(){
+  var url = encodeSongToHash();
+  var done = function(){ toast('곡 공유 링크를 복사했습니다 · ' + (url.length / 1024).toFixed(1) + 'KB', 'ok'); };
+  var fallback = function(){
+    var ta = document.createElement('textarea');
+    ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+    if (ok) done(); else toast('공유 링크를 만들었습니다 (복사는 브라우저 권한 필요)', 'warn');
+  };
+  try { history.replaceState(null, '', url); } catch (e) {}
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(done).catch(fallback);
+  } else fallback();
+  return url;
+}
+
+/* =======================================================
+   12-9. UI 배선 · 초기화
+   ======================================================= */
+function syncV8Controls(){
+  var chk = $('chk-duck'); if (chk) chk.checked = !!S.duck;
+  var dd = $('duck-depth'); if (dd) dd.value = S.duckDepth;
+  var ddv = $('duck-depth-val');
+  if (ddv) ddv.textContent = '-' + Math.round(S.duckDepth / 100 * 15) + 'dB';
+  var ob = $('btn-overdub');
+  if (ob){ ob.textContent = S.overdub ? '● 오버더빙 ON' : '● 오버더빙 OFF'; ob.classList.toggle('recpulse', !!S.overdub); }
+  renderAmb();
+  var oct = $('kb-oct'); if (oct) oct.textContent = 'C' + S.kbOct + '–B' + (S.kbOct + 1);
+  var ta = $('tp-edit'); if (ta) ta.value = scriptLines().join('\n');
+  var ind = $('duck-state');
+  if (ind && !DUCK.speaking){ ind.textContent = S.duck ? '대기 중' : '덕킹 꺼짐'; ind.classList.remove('on'); }
+}
+
+function initFolds(){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-fold]'), function(head){
+    head.addEventListener('click', function(){
+      var card = head.closest('.card'); if (!card) return;
+      var closed = card.classList.toggle('closed');
+      head.setAttribute('aria-expanded', closed ? 'false' : 'true');
+    });
+  });
+}
+
+var UI = { timer:null };
+
+function startUiSync(){
+  if (UI.timer) return;
+  UI.timer = setInterval(function(){
+    if (!AU.playing) return;
+    var narr = $('tab-narr'), play = $('tab-play');
+    if (narr && !narr.classList.contains('hidden')) tpHighlight();
+    if (play && !play.classList.contains('hidden')) drumSeqTick();
+    if ($('tab-seq') && !$('tab-seq').classList.contains('hidden')) drawDrums();
+  }, 120);
+}
+
+function initV8(){
+  /* 내레이션 */
+  var rec = $('btn-narr-rec'); if (rec) rec.addEventListener('click', toggleNarrationRecord);
+  var snd = $('btn-narr-sample'); if (snd) snd.addEventListener('click', playSampleNarrationCadence);
+  var dk = $('chk-duck');
+  if (dk) dk.addEventListener('change', function(){
+    S.duck = dk.checked;
+    if (!S.duck) setAutoDuckingState(false);
+    else if (DUCK.speaking) setAutoDuckingState(true);
+    saveSettings();
+  });
+  var dd = $('duck-depth');
+  if (dd) dd.addEventListener('input', function(){
+    S.duckDepth = clamp(+dd.value, 20, 85);
+    var v = $('duck-depth-val'); if (v) v.textContent = '-' + Math.round(S.duckDepth / 100 * 15) + 'dB';
+    if (DUCK.speaking) setAutoDuckingState(true);
+    saveSettings();
+  });
+  var tpEdit = $('tp-edit');
+  if (tpEdit) tpEdit.addEventListener('input', function(){
+    S.script = tpEdit.value.split('\n').map(function(s){ return s.trim(); }).filter(function(s){ return s.length; });
+    renderTeleprompter(); saveSettings();
+  });
+  var tgen = $('btn-tp-gen'); if (tgen) tgen.addEventListener('click', generateScriptFromMood);
+
+  /* 드럼 시퀀서 */
+  var dp = $('dseq-prev'), dn = $('dseq-next');
+  if (dp) dp.addEventListener('click', function(){
+    S.drumBar = Math.max(0, S.drumBar - 1); renderDrumSeq(); drawDrums();
+  });
+  if (dn) dn.addEventListener('click', function(){
+    S.drumBar = Math.min(Math.max(0, S.bars - 1), S.drumBar + 1); renderDrumSeq(); drawDrums();
+  });
+  var dcl = $('dseq-clear');
+  if (dcl) dcl.addEventListener('click', function(){
+    S.drums = S.drums.filter(function(n){ return n.bar !== S.drumBar; });
+    rebuildEvents(); renderDrumSeq(); drawDrums(); refreshStats(); saveSettings();
+    toast((S.drumBar + 1) + '마디 드럼을 비웠습니다');
+  });
+
+  /* 건반 */
+  bindKeyboard();
+  var ob = $('btn-overdub'); if (ob) ob.addEventListener('click', function(){ setOverdub(!S.overdub); });
+  var kd = $('kb-down'), ku = $('kb-up');
+  if (kd) kd.addEventListener('click', function(){
+    S.kbOct = clamp(S.kbOct - 1, 2, 6); renderKeyboard(); syncV8Controls(); saveSettings();
+  });
+  if (ku) ku.addEventListener('click', function(){
+    S.kbOct = clamp(S.kbOct + 1, 2, 6); renderKeyboard(); syncV8Controls(); saveSettings();
+  });
+
+  /* 환경음 */
+  ['rain','fire','cafe','ocean'].forEach(function(k){
+    var sl = $('amb-' + k);
+    if (sl) sl.addEventListener('input', function(){ setAmb(k, +sl.value); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-amb]'), function(b){
+    b.addEventListener('click', function(){
+      var spec = b.dataset.amb;
+      ['rain','fire','cafe','ocean'].forEach(function(k){ S.amb[k] = 0; });
+      if (spec !== 'off'){
+        var keys = spec.split(',');
+        keys.forEach(function(k, i){ if (S.amb[k] != null) S.amb[k] = i === 0 ? 38 : 24; });
+      }
+      ensureAudio().then(function(){ ambApply(); }).catch(function(){});
+      renderAmb(); saveSettings();
+      toast(spec === 'off' ? '환경음을 껐습니다' : '환경음 프리셋을 켰습니다', 'ok');
+    });
+  });
+
+  /* 영상 */
+  var vf = $('video-file');
+  if (vf) vf.addEventListener('change', function(){
+    var f = vf.files && vf.files[0];
+    if (f) loadVideoFile(f);
+    vf.value = '';
+  });
+  var vd = $('btn-video-demo'); if (vd) vd.addEventListener('click', useDemoVideo);
+  var fit = $('btn-fit-video'); if (fit) fit.addEventListener('click', function(){ autoFitSongFormToVideo(); });
+  var mux = $('btn-mux'); if (mux) mux.addEventListener('click', function(){ exportMuxedVideoWithBgm(); });
+
+  /* 공유 */
+  var sh = $('btn-share'); if (sh) sh.addEventListener('click', shareSong);
+  var sh2 = $('btn-share-link'); if (sh2) sh2.addEventListener('click', shareSong);
+
+  initFolds();
+  renderDrumSeq(); renderKeyboard(); renderTeleprompter(); renderAmb();
+  syncV8Controls();
+  drawVideoPoster();
+  startUiSync();
+
+  /* 첫 소리 이후 환경음·덕킹 상태를 실제 그래프에 반영 */
+  window.addEventListener('aura:unlocked', function(){ setTimeout(function(){ if (AU.ctx) { ambApply(); if (AU.narrSrc) connectNarration(); } }, 400); });
+  document.addEventListener('pointerdown', function(){
+    setTimeout(function(){ if (AU.ctx) { ambApply(); if (S.actualDuck) setAutoDuckingState(true); } }, 300);
+  }, { once:true });
+
+  /* 저장값이 있으면 슬라이더에 반영 */
+  renderAmb();
+}
+
+/* 부팅은 마지막 조각(18_v6.js)에서 호출한다 */
+
+/* ---------------------------------------------------------------- 13. v6 기능
+   AURA Studio v6 의 기능을 이 엔진에 맞춰 되살렸다.
+   · 트랙 잠금(🔒) & 원클릭 리믹스 — 잠근 트랙은 두고 나머지만 새로
+   · 사진 → 음악 — 색감·밝기를 읽어 장르·템포·환경음 자동 세팅
+   · 보컬 코러스 패드(Ooh/Aah/Chops) · 마이크 비트박스 → 드럼 패턴
+   · 프로 연출 — 구간 전환 라이저 + 마지막 마디 드럼 브레이크다운
+   ========================================================================== */
+
+var ROLE_LABEL = { melody:'멜로디', chords:'코드', bass:'베이스', drums:'드럼', arp:'아르페지오', vocal:'보컬' };
+
+/* =======================================================
+   13-1. 잠금 & 리믹스
+   ======================================================= */
+function mutateArrangement(){
+  var seed = (Date.now() & 0xffff) || 7;
+  var byRole = {};
+  S.tracks.forEach(function(t){ byRole[t.role] = t; });
+  var kept = [];
+  S.tracks.forEach(function(t){ if (t.locked) kept.push(ROLE_LABEL[t.role] || t.role); });
+
+  /* 잠기지 않은 트랙만 악기를 바꾼다 */
+  S.tracks.forEach(function(t){
+    if (t.locked) return;
+    var opts = S.trackOpts[t.role];
+    if (opts && opts.length > 1) t.inst = opts[rint(opts.length)];
+  });
+  if (!byRole.chords || !byRole.chords.locked){ S.chords = []; buildChords(seed); }
+  if (!byRole.melody || !byRole.melody.locked) S.notes = genMelody(seed + 3, false);
+  if (!byRole.bass || !byRole.bass.locked) S.bass = genBass(seed + 5);
+  if (!byRole.arp || !byRole.arp.locked) S.arp = genArp(seed + 7);
+  if (!byRole.drums || !byRole.drums.locked) S.drums = genDrums(seed + 9);
+  if (!byRole.vocal || !byRole.vocal.locked) S.vocal = genVocal(seed + 11);
+
+  rebuildEvents(); renderMixer(); drawAll(); refreshStats(); refreshLoopInfo();
+  renderVocalBadge(); saveSettings();
+  if (AU.ctx) loadNeeded(null).then(function(){ updateSamplerStatus(); renderMixer(); }).catch(function(){});
+  toast(kept.length
+    ? '🔒 ' + kept.join('·') + ' 은 그대로, 나머지를 새로 리믹스했습니다'
+    : '잠긴 트랙 없이 전체를 리믹스했습니다', 'ok');
+  return kept;
+}
+
+/* =======================================================
+   13-2. 프로 연출 — 라이저 · 브레이크다운
+   ======================================================= */
+function riserBars(){
+  var secs = sections();
+  var out = [];
+  for (var i = 0; i < secs.length - 1; i++){
+    var end = secs[i].start + secs[i].len - 1;
+    if (end >= 0 && end < S.bars) out.push(end);
+  }
+  return out;
+}
+
+function riserFx(ctx, out, when, durSec){
+  if (!ctx || !out || !(durSec > 0)) return;
+  var src = ctx.createBufferSource();
+  src.buffer = noiseBuffer(ctx);
+  src.loop = true;
+  var bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.Q.value = 1.1;
+  bp.frequency.setValueAtTime(420, when);
+  bp.frequency.exponentialRampToValueAtTime(7200, when + durSec * 0.96);
+  var g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.linearRampToValueAtTime(0.16, when + durSec * 0.9);
+  g.gain.linearRampToValueAtTime(0.0001, when + durSec);
+  src.connect(bp); bp.connect(g); g.connect(out);
+  try { src.start(when); src.stop(when + durSec + 0.06); } catch (e) {}
+}
+
+function fxBadge(){
+  var b = $('fx-badge');
+  if (b) b.textContent = (S.riser || S.breakdown) ? (S.riser && S.breakdown ? '라이저 + 브레이크' : S.riser ? '라이저' : '브레이크') : 'OFF';
+}
+
+/* =======================================================
+   13-3. 사진 → 음악
+   ======================================================= */
+var SCENE_GRAD = {
+  sunset:    ['#f97316', '#7c2d12'],
+  rainnight: ['#0b1220', '#312e81'],
+  ocean:     ['#0ea5e9', '#fef08a'],
+  forest:    ['#064e3b', '#94a3b8']
+};
+
+function drawPhotoPlaceholder(scene){
+  var cv = $('photo-canvas'); if (!cv) return;
+  var c = cv.getContext('2d'), W = cv.width, H = cv.height;
+  var cols = SCENE_GRAD[scene] || ['#1f2937', '#0b1020'];
+  var g = c.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, cols[0]); g.addColorStop(1, cols[1]);
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+}
+
+function analyzePhoto(img, scene){
+  var cv = $('photo-canvas');
+  if (!cv) return;
+  var c = cv.getContext('2d'), W = cv.width, H = cv.height;
+  c.clearRect(0, 0, W, H);
+  if (img){
+    var s = Math.max(W / img.width, H / img.height);
+    var dw = img.width * s, dh = img.height * s;
+    c.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  } else {
+    var cols = SCENE_GRAD[scene] || SCENE_GRAD.sunset;
+    var g = c.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, cols[0]); g.addColorStop(1, cols[1]);
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    /* 장면 표정 — 해/비/물결/나무를 살짝 */
+    c.globalAlpha = 0.5;
+    if (scene === 'sunset'){ c.fillStyle = '#fde68a'; c.beginPath(); c.arc(W * 0.75, H * 0.42, H * 0.2, 0, Math.PI * 2); c.fill(); }
+    if (scene === 'rainnight'){ c.strokeStyle = '#93c5fd'; c.lineWidth = 1.4; for (var r = 0; r < 18; r++){ var x = (r * 37) % W; c.beginPath(); c.moveTo(x, 4 + (r * 13) % H); c.lineTo(x - 6, 16 + (r * 13) % H); c.stroke(); } }
+    if (scene === 'ocean'){ c.strokeStyle = '#e0f2fe'; c.lineWidth = 1.6; for (var o = 0; o < 4; o++){ c.beginPath(); for (var x2 = 0; x2 < W; x2 += 6) c.lineTo(x2, H * 0.55 + o * 9 + Math.sin(x2 / 16 + o) * 3.4); c.stroke(); } }
+    if (scene === 'forest'){ c.fillStyle = '#052e16'; for (var t = 0; t < 9; t++){ var bx = 12 + t * 36; c.beginPath(); c.moveTo(bx, H); c.lineTo(bx + 10, H * 0.28); c.lineTo(bx + 20, H); c.fill(); } }
+    c.globalAlpha = 1;
+  }
+  var px;
+  try { px = c.getImageData(0, 0, W, H).data; } catch (e) { return; }
+  var rSum = 0, gSum = 0, bSum = 0, n = 0;
+  for (var i = 0; i < px.length; i += 16){ rSum += px[i]; gSum += px[i + 1]; bSum += px[i + 2]; n++; }
+  n = Math.max(1, n);
+  var r = rSum / n, gg = gSum / n, b = bSum / n;
+  var bright = (r + gg + b) / (3 * 255);
+  var warm = (r - b) / 255;
+  var green = (gg - Math.max(r, b)) / 255;
+
+  var sw = $('photo-swatches');
+  if (sw){
+    var cols2 = [
+      'rgb(' + Math.round(r) + ',' + Math.round(gg) + ',' + Math.round(b) + ')',
+      'rgb(' + Math.min(255, Math.round(r + 34)) + ',' + Math.round(gg) + ',' + Math.round(b) + ')',
+      'rgb(' + Math.round(r) + ',' + Math.round(gg) + ',' + Math.min(255, Math.round(b + 38)) + ')'
+    ];
+    Array.prototype.forEach.call(sw.children, function(el2, k){
+      if (cols2[k]) el2.style.background = cols2[k];
+    });
+  }
+
+  var pid, amb, label;
+  var SCENE_MAP = {
+    sunset:    ['acoustic',  { fire:30,  rain:0,  cafe:0,  ocean:0 }, '노을 — 따뜻한 어쿠스틱 팝'],
+    rainnight: ['lofi',      { rain:32,  fire:14, cafe:16, ocean:0 }, '비 오는 밤 — 로파이 카페'],
+    ocean:     ['techhouse', { ocean:32, rain:0,  cafe:0,  fire:0 }, '바다 — 시원한 클럽 비트'],
+    forest:    ['ambient',   { rain:24,  fire:0,  cafe:0,  ocean:0 }, '숲 — 힐링 앰비언트']
+  };
+  if (scene && SCENE_MAP[scene]){
+    pid = SCENE_MAP[scene][0]; amb = SCENE_MAP[scene][1]; label = SCENE_MAP[scene][2];
+  } else if (green > 0.045){ pid = 'ambient'; amb = { rain:24, cafe:0, fire:0, ocean:0 }; label = '초록이 많은 장면 — 힐링 앰비언트'; }
+  else if (bright > 0.58 && b >= r){ pid = 'techhouse'; amb = { ocean:30, rain:0, cafe:0, fire:0 }; label = '밝고 푸른 장면 — 시원한 클럽 비트'; }
+  else if (warm > 0.09){ pid = bright > 0.5 ? 'acoustic' : 'lofi'; amb = bright > 0.5 ? { fire:30, rain:0, cafe:0, ocean:0 } : { fire:20, cafe:18, rain:0, ocean:0 }; label = bright > 0.5 ? '따뜻하고 밝은 장면 — 어쿠스틱 팝' : '따뜻하고 어두운 장면 — 로파이 카페'; }
+  else if (bright < 0.34){ pid = 'citypop'; amb = { rain:30, cafe:16, fire:0, ocean:0 }; label = '어두운 밤 장면 — 시티팝 드라이브'; }
+  else { pid = bright > 0.62 ? 'kpop' : 'bossa'; amb = { cafe:24, rain:0, fire:0, ocean:0 }; label = '부드러운 중간 톤 — 카페 보사노바'; }
+
+  var p = PRESETS.filter(function(x){ return x.id === pid; })[0] || PRESETS[0];
+  applyPresetValues(p, true);
+  S.bright = clamp(Math.round(bright * 100), 18, 96);
+  S.energy = clamp(Math.round(34 + (1 - bright) * 46), 18, 92);
+  ['rain','fire','cafe','ocean'].forEach(function(k){ S.amb[k] = amb[k] || 0; });
+  S.chords = [];
+  composeAll(Date.now() & 0xffff, { newChords:true });
+  S.aiTitle = '사진 분석 · ' + p.name;
+  S.aiTip = label + ' · 밝기 ' + Math.round(bright * 100) + '% · 따뜻함 ' + Math.round(warm * 100) +
+    ' · 환경음 ' + (Object.keys(amb).filter(function(k){ return amb[k]; }).map(function(k){ return ({rain:'빗소리',fire:'모닥불',cafe:'카페',ocean:'파도'})[k]; }).join('·') || '없음') + ' 자동 세팅';
+  S.aiSource = 'photo';
+  var mt = $('mood-text');
+  if (mt) mt.value = label.replace(' — ', ', ');
+  var badge = $('photo-badge');
+  if (badge){ badge.textContent = p.name; badge.className = 'badge ok'; }
+  var text = $('photo-text');
+  if (text) text.textContent = '분석 완료 — 밝기 ' + Math.round(bright * 100) + '% · ' + label + '. 프리셋·템포·환경음을 다시 맞췄습니다.';
+
+  syncPresetUI(); applyStateToUI(); renderMixer(); refreshStats(); refreshLoopInfo();
+  drawAll(); renderDrumSeq(); renderAmb(); showAiCard();
+  if (AU.ctx) ambApply();
+  if (AU.ctx) loadNeeded(null).then(function(){ updateSamplerStatus(); }).catch(function(){});
+  toast('사진 색감으로 ' + p.name + ' 곡을 만들었습니다', 'ok');
+  return { preset:pid, brightness:bright, warm:warm, green:green };
+}
+
+function bindPhoto(){
+  var inp = $('photo-file');
+  if (inp) inp.addEventListener('change', function(){
+    var f = inp.files && inp.files[0];
+    if (f){
+      var im = new Image();
+      im.onload = function(){ analyzePhoto(im); };
+      im.onerror = function(){ toast('이미지를 읽을 수 없습니다', 'err'); };
+      im.src = URL.createObjectURL(f);
+    }
+    inp.value = '';
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-scene]'), function(b){
+    b.addEventListener('click', function(){ analyzePhoto(null, b.dataset.scene); });
+  });
+  drawPhotoPlaceholder('sunset');
+}
+
+/* =======================================================
+   13-4. 보컬 코러스 패드
+   ======================================================= */
+function vocalTrack(){ return S.tracks.filter(function(t){ return t.role === 'vocal'; })[0]; }
+
+function renderVocalBadge(){
+  var t = vocalTrack();
+  var b = $('vox-badge');
+  if (b && t) b.textContent = t.mute ? '꺼짐' : (INST[t.inst] ? INST[t.inst].name : t.inst);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-vox]'), function(el2){
+    var id = el2.dataset.vox;
+    var on = t && (id === 'off' ? t.mute : (!t.mute && t.inst === id));
+    el2.classList.toggle('on', !!on);
+  });
+}
+
+function setVocal(id){
+  var t = vocalTrack();
+  if (!t) return;
+  if (id === 'off'){
+    t.mute = true;
+  } else {
+    t.inst = id;
+    t.mute = false;
+    S.vocal = genVocal((Date.now() & 0xffff) + 41);
+  }
+  refreshMix(); renderMixer(); renderVocalBadge(); rebuildEvents(); refreshStats(); saveSettings();
+  if (AU.ctx) loadNeeded(null).then(function(){ updateSamperOrNothing(); }).catch(function(){});
+  toast(id === 'off' ? '보컬 패드를 껐습니다' : '보컬 패드 — ' + (INST[id] ? INST[id].name : id), 'ok');
+}
+function updateSamperOrNothing(){ try { updateSamplerStatus(); renderMixer(); } catch (e) {} }
+
+/* =======================================================
+   13-5. 마이크 비트박스 → 드럼
+   ======================================================= */
+var BB = { timer:null, stream:null, an:null, step:0, bar:0 };
+
+function upsertDrum(bar, step, row, vel){
+  for (var i = 0; i < S.drums.length; i++){
+    var n = S.drums[i];
+    if (n.bar === bar && n.step === step && n.row === row){
+      n.vel = Math.max(n.vel || 0, vel);
+      return;
+    }
+  }
+  S.drums.push({ bar:bar, step:step, row:row, vel:vel });
+}
+
+function stopBeatbox(auto){
+  if (BB.timer){ clearInterval(BB.timer); BB.timer = null; }
+  if (BB.stream){ BB.stream.getTracks().forEach(function(t){ try { t.stop(); } catch (e) {} }); BB.stream = null; }
+  BB.an = null;
+  var btn = $('btn-beatbox');
+  if (btn){ btn.classList.remove('recpulse'); btn.textContent = '🎤 비트박스 녹음'; }
+  var st = $('bb-state');
+  if (st){ st.textContent = auto ? '완료' : '대기'; st.classList.remove('on'); }
+  rebuildEvents(); renderDrumSeq(); drawDrums(); refreshStats(); saveSettings();
+  if (auto) toast('비트박스를 드럼으로 옮겼습니다 · ' + (S.drumBar + 1) + '마디', 'ok');
+}
+
+function toggleBeatbox(){
+  if (BB.timer){ stopBeatbox(false); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    toast('이 브라우저는 마이크를 지원하지 않습니다 — 샘플 패턴을 눌러 보세요', 'warn');
+    return;
+  }
+  ensureAudio().then(function(){
+    return navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:true } });
+  }).then(function(stream){
+    BB.stream = stream;
+    var src = AU.ctx.createMediaStreamSource(stream);
+    var an = AU.ctx.createAnalyser();
+    an.fftSize = 512; an.smoothingTimeConstant = 0.2;
+    src.connect(an);
+    BB.an = an; BB.step = 0; BB.bar = S.drumBar;
+    var btn = $('btn-beatbox');
+    if (btn){ btn.classList.add('recpulse'); btn.textContent = '■ 녹음 중지'; }
+    var st = $('bb-state');
+    if (st){ st.textContent = '● 듣는 중'; st.classList.add('on'); }
+    var note = $('bb-note');
+    if (note) note.textContent = '듣고 있어요 — "붐—칫—타" 2초! 저음=킥 · 중음=스네어 · 고음=하이햇.';
+    if (!AU.playing) startPlayback();
+    var stepMs = (60 / S.bpm) / 4 * 1000;
+    var freq = new Uint8Array(an.frequencyBinCount);
+    BB.timer = setInterval(function(){
+      if (!BB.an) return;
+      BB.an.getByteFrequencyData(freq);
+      function avg(a, b){ var s = 0; for (var i = a; i < b; i++) s += freq[i]; return s / Math.max(1, b - a); }
+      var low = avg(1, 9), mid = avg(12, 40), high = avg(50, 120);
+      var peak = Math.max(low, mid, high);
+      if (peak > 55){
+        var row = (low === peak) ? 'kick' : (mid === peak ? 'snare' : 'hat');
+        upsertDrum(BB.bar, BB.step % 16, row, clamp(peak / 170, .35, 1));
+        renderDrumSeq(); drawDrums();
+      }
+      BB.step++;
+      var barEl = $('bb-state');
+      if (barEl) barEl.textContent = '● ' + BB.step + '/16';
+      if (BB.step >= 16) stopBeatbox(true);
+    }, stepMs);
+  }).catch(function(){
+    stopBeatbox(false);
+    toast('마이크를 열 수 없습니다 — [샘플 패턴]으로 리듬을 채워 보세요', 'warn');
+  });
+}
+
+function beatboxDemo(){
+  var bar = S.drumBar;
+  S.drums = S.drums.filter(function(n){ return n.bar !== bar; });
+  var pat = { kick:[0,6,8,14], snare:[4,12], hat:[0,2,4,6,8,10,12,14] };
+  Object.keys(pat).forEach(function(row){
+    pat[row].forEach(function(st){ S.drums.push({ bar:bar, step:st, row:row, vel: row === 'hat' ? .5 : .85 }); });
+  });
+  rebuildEvents(); renderDrumSeq(); drawDrums(); refreshStats(); saveSettings();
+  var st = $('bb-state'); if (st){ st.textContent = '샘플'; st.classList.remove('on'); }
+  toast((bar + 1) + '마디에 샘플 비트를 넣었습니다', 'ok');
+}
+
+/* =======================================================
+   13-6. 배선 · 동기화
+   ======================================================= */
+function syncV6Controls(){
+  var r = $('chk-riser'); if (r) r.checked = S.riser !== false;
+  var b = $('chk-breakdown'); if (b) b.checked = S.breakdown !== false;
+  fxBadge();
+  renderVocalBadge();
+}
+
+function initV6(){
+  bindPhoto();
+  var remix = $('btn-remix'); if (remix) remix.addEventListener('click', mutateArrangement);
+  var riser = $('chk-riser');
+  if (riser) riser.addEventListener('change', function(){
+    S.riser = riser.checked; fxBadge(); saveSettings();
+  });
+  var bd = $('chk-breakdown');
+  if (bd) bd.addEventListener('change', function(){
+    S.breakdown = bd.checked; rebuildEvents(); refreshStats(); drawDrums(); fxBadge(); saveSettings();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-vox]'), function(el2){
+    el2.addEventListener('click', function(){ setVocal(el2.dataset.vox); });
+  });
+  var bb = $('btn-beatbox'); if (bb) bb.addEventListener('click', toggleBeatbox);
+  var bb2 = $('btn-beatbox-demo'); if (bb2) bb2.addEventListener('click', beatboxDemo);
+  syncV6Controls();
+}
+
+/* =======================================================
+   13-7. 사이드체인 펌핑
+   ======================================================= */
+function pumpAt(ctx, node, when){
+  if (!ctx || !node) return;
+  var g = node.gain;
+  try {
+    g.setValueAtTime(0.55, when);
+    g.linearRampToValueAtTime(1, when + 0.16);
+  } catch (e) {}
+}
+
+/* =======================================================
+   13-8. 2D 감정 패드 (XY)
+   ======================================================= */
+function toneFromXY(){ return Math.round(2200 + clamp(S.xy.x, 0, 1) * 13800); }
+
+function drawXYPad(){
+  var cv = $('xy-canvas'); if (!cv) return;
+  var f = fitCanvas(cv); if (!f) return;
+  var c = f.c, W = f.w, H = f.h, d = f.d, P = pal();
+  c.fillStyle = P.bg; c.fillRect(0, 0, W, H);
+  c.strokeStyle = P.gridSoft; c.lineWidth = 1;
+  for (var i = 1; i < 4; i++){
+    c.beginPath(); c.moveTo(i * W / 4, 0); c.lineTo(i * W / 4, H); c.stroke();
+    c.beginPath(); c.moveTo(0, i * H / 4); c.lineTo(W, i * H / 4); c.stroke();
+  }
+  c.strokeStyle = P.beat;
+  c.beginPath(); c.moveTo(W / 2, 0); c.lineTo(W / 2, H); c.moveTo(0, H / 2); c.lineTo(W, H / 2); c.stroke();
+  c.fillStyle = P.tx2; c.font = '700 ' + (9 * d) + 'px Pretendard, sans-serif';
+  c.fillText('어둡게', 4 * d, H / 2 - 5 * d);
+  c.textAlign = 'right'; c.fillText('밝게', W - 4 * d, H / 2 - 5 * d); c.textAlign = 'left';
+  c.fillText('격렬', W / 2 + 4 * d, 11 * d);
+  c.fillText('차분', W / 2 + 4 * d, H - 4 * d);
+  var px = clamp(S.xy.x, 0, 1) * W, py = (1 - clamp(S.xy.y, 0, 1)) * H;
+  c.fillStyle = 'rgba(34,211,238,.22)';
+  c.beginPath(); c.arc(px, py, 14 * d, 0, Math.PI * 2); c.fill();
+  c.fillStyle = P.note;
+  c.beginPath(); c.arc(px, py, 6 * d, 0, Math.PI * 2); c.fill();
+  var rd = $('xy-readout');
+  if (rd) rd.textContent = Math.round(S.xy.x * 100) + '·' + Math.round(S.xy.y * 100);
+}
+
+function applyXYLive(){
+  S.master.tone = toneFromXY();
+  if (AU.ctx && AU.master) setMasterParam('tone', S.master.tone);
+  drawXYPad();
+}
+
+function commitXY(){
+  var en = clamp(Math.round(18 + clamp(S.xy.y, 0, 1) * 82), 10, 100);
+  if (en !== S.energy){
+    S.energy = en;
+    var es = $('energy-slider'); if (es) es.value = en;
+    var ev = $('energy-val'); if (ev) ev.textContent = en;
+    rebuildDynamics(); drawEnergy(); refreshStats(); updatePrompt();
+  }
+  saveSettings();
+}
+
+function bindXY(){
+  var cv = $('xy-canvas'); if (!cv) return;
+  var drag = false;
+  function act(e){
+    var r = cv.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    S.xy.x = clamp((e.clientX - r.left) / r.width, 0, 1);
+    S.xy.y = clamp(1 - (e.clientY - r.top) / r.height, 0, 1);
+    applyXYLive();
+  }
+  cv.addEventListener('pointerdown', function(e){ e.preventDefault(); drag = true; try { cv.setPointerCapture(e.pointerId); } catch (e2) {} act(e); });
+  cv.addEventListener('pointermove', function(e){ if (drag) act(e); });
+  cv.addEventListener('pointerup', function(){ if (!drag) return; drag = false; commitXY(); });
+  cv.addEventListener('pointercancel', function(){ if (!drag) return; drag = false; commitXY(); });
+  drawXYPad();
+}
+
+/* =======================================================
+   13-9. 코드 롤링 · 프로젝트 보관함 · A/B 스냅샷
+   ======================================================= */
+function bindRoll(){
+  var rs = $('roll-slider'); if (!rs) return;
+  rs.addEventListener('input', function(){
+    S.roll = clamp(+rs.value, 0, 100);
+    var rv = $('roll-val'); if (rv) rv.textContent = S.roll;
+    rebuildEvents(); saveSettings();
+  });
+}
+
+function bindPump(){
+  var c = $('chk-pump'); if (!c) return;
+  c.addEventListener('change', function(){
+    S.pump = c.checked;
+    if (!S.pump && AU.pumpBus && AU.ctx){ try { AU.pumpBus.gain.cancelScheduledValues(AU.ctx.currentTime); AU.pumpBus.gain.value = 1; } catch (e) {} }
+    saveSettings();
+    toast(S.pump ? '사이드체인 펌핑 ON — 킥마다 베이스·코드가 살짝 눌립니다' : '사이드체인 펌핑 OFF');
+  });
+}
+
+var LIB_KEY = 'aura_library';
+function libRead(){ try { return JSON.parse(localStorage.getItem(LIB_KEY) || '[]'); } catch (e) { return []; } }
+function libWrite(l){ try { localStorage.setItem(LIB_KEY, JSON.stringify(l)); } catch (e) { toast('저장 공간이 부족합니다', 'err'); } }
+
+function renderLibrary(){
+  var box = $('proj-list'); if (!box) return;
+  var list = libRead();
+  if (!list.length){ box.innerHTML = '<div class="tiny">아직 저장한 곡이 없습니다. 위에 이름을 적고 [저장]을 누르세요.</div>'; return; }
+  box.innerHTML = list.map(function(it, i){
+    var d = new Date(it.at || Date.now());
+    var stamp = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    var dt = it.data || {};
+    return '<div class="sub row between" style="padding:7px 9px;gap:6px;">' +
+      '<div style="min-width:0;">' +
+        '<div style="font-size:11.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(it.name || '이름 없음') + '</div>' +
+        '<div class="tiny">' + stamp + ' · ' + (dt.bpm || '?') + ' BPM · ' + (dt.bars || '?') + '마디</div>' +
+      '</div>' +
+      '<div class="row" style="gap:4px;flex:0 0 auto;">' +
+        '<button class="btn sm" data-lib-load="' + i + '">불러오기</button>' +
+        '<button class="btn sm" data-lib-del="' + i + '" style="color:var(--rose);" aria-label="지우기">✕</button>' +
+      '</div></div>';
+  }).join('');
+  Array.prototype.forEach.call(box.querySelectorAll('[data-lib-load]'), function(b){
+    b.addEventListener('click', function(){
+      var it = libRead()[+b.dataset.libLoad];
+      if (!it) return;
+      if (applyProject(it.data)){
+        S.aiTitle = it.name || S.aiTitle;
+        renderVocalBadge(); renderAmb(); renderTeleprompter(); renderDrumSeq(); drawXYPad();
+        toast('보관함에서 불러왔습니다 · ' + it.name, 'ok');
+      }
+    });
+  });
+  Array.prototype.forEach.call(box.querySelectorAll('[data-lib-del]'), function(b){
+    b.addEventListener('click', function(){
+      var list2 = libRead();
+      var it = list2.splice(+b.dataset.libDel, 1)[0];
+      libWrite(list2); renderLibrary();
+      toast((it ? it.name : '곡') + ' 을(를) 보관함에서 지웠습니다');
+    });
+  });
+}
+
+function librarySave(){
+  var nameEl = $('proj-name');
+  var name = (nameEl && nameEl.value.trim()) || ('AURA ' + S.bpm + ' BPM · ' + S.bars + '마디');
+  var list = libRead();
+  list.unshift({ id:'p' + Date.now(), name:name.slice(0, 40), at:Date.now(), data:projectSnapshot() });
+  if (list.length > 20) list = list.slice(0, 20);
+  libWrite(list); renderLibrary();
+  if (nameEl) nameEl.value = '';
+  toast('보관함에 저장했습니다 · ' + name, 'ok');
+}
+
+function libraryExport(){
+  var list = libRead();
+  if (!list.length){ toast('보관함이 비어 있습니다', 'warn'); return; }
+  downloadBlob(new Blob([JSON.stringify({ type:'aura-library', v:1, savedAt:Date.now(), items:list }, null, 1)], { type:'application/json' }),
+    'aura_library_' + new Date().toISOString().slice(0, 10) + '.json');
+  toast('보관함 ' + list.length + '곡을 JSON으로 내려받았습니다', 'ok');
+}
+
+function libraryImport(file){
+  var fr = new FileReader();
+  fr.onload = function(){
+    try {
+      var d = JSON.parse(String(fr.result));
+      var items = Array.isArray(d) ? d : (d && Array.isArray(d.items) ? d.items : null);
+      if (!items){ toast('보관함 JSON 형식이 아닙니다', 'err'); return; }
+      var list = libRead();
+      items.forEach(function(it){
+        if (!it || !it.data) return;
+        list.unshift({ id:'p' + (Date.now() + Math.floor(Math.random() * 999)), name:String(it.name || '가져온 곡').slice(0, 40), at:it.at || Date.now(), data:it.data });
+      });
+      if (list.length > 40) list = list.slice(0, 40);
+      libWrite(list); renderLibrary();
+      toast('보관함 ' + items.length + '곡을 가져왔습니다', 'ok');
+    } catch (e){ toast('파일을 읽을 수 없습니다', 'err'); }
+  };
+  fr.readAsText(file);
+}
+
+var SNAP_KEY = 'aura_snapshots';
+function snapRead(){ try { var o = JSON.parse(localStorage.getItem(SNAP_KEY) || '{}'); return { A:o.A || null, B:o.B || null }; } catch (e) { return { A:null, B:null }; } }
+function snapWrite(s){ try { localStorage.setItem(SNAP_KEY, JSON.stringify(s)); } catch (e) {} }
+
+function renderSnap(){
+  var s = snapRead();
+  ['A','B'].forEach(function(k){
+    var info = $('snap-' + k.toLowerCase() + '-info');
+    if (!info) return;
+    if (!s[k]) { info.textContent = '비어 있음'; return; }
+    var d = new Date(s[k].at || Date.now());
+    info.textContent = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ' · ' + (s[k].bpm || '?') + 'BPM';
+  });
+  var act = $('snap-active'); if (act) act.textContent = S.snapActive || 'A';
+}
+
+function snapSave(slot){
+  var s = snapRead();
+  var snap = projectSnapshot();
+  snap.at = Date.now();
+  s[slot] = snap;
+  snapWrite(s);
+  S.snapActive = slot;
+  renderSnap();
+  toast('스냅샷 ' + slot + '에 현재 설정을 저장했습니다', 'ok');
+}
+function snapLoad(slot, quiet){
+  var s = snapRead();
+  if (!s[slot]){ if (!quiet) toast('스냅샷 ' + slot + '이 비어 있습니다', 'warn'); return false; }
+  if (!applyProject(s[slot])) return false;
+  S.snapActive = slot;
+  renderSnap(); renderVocalBadge(); renderAmb(); drawXYPad();
+  if (!quiet) toast('스냅샷 ' + slot + '을 불러왔습니다', 'ok');
+  return true;
+}
+function snapToggle(){
+  var next = (S.snapActive === 'A') ? 'B' : 'A';
+  var s = snapRead();
+  if (!s[next]){
+    /* 빈 칸이면 지금 설정을 그 칸에 넣고 A로 돌아간다 */
+    snapSave(next);
+    return;
+  }
+  snapLoad(next, true);
+  toast('스냅샷 ' + next + ' 재생', 'ok');
+  if (!AU.playing) startPlayback();
+}
+
+function initExtras(){
+  bindXY(); bindRoll(); bindPump();
+  var bi = $('btn-lib-save'); if (bi) bi.addEventListener('click', librarySave);
+  var imp = $('btn-import-proj');
+  if (imp) imp.addEventListener('click', function(){
+    var inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = '.json,application/json';
+    inp.onchange = function(){
+      var f = inp.files && inp.files[0];
+      if (!f) return;
+      var fr = new FileReader();
+      fr.onload = function(){
+        var txt = String(fr.result);
+        try {
+          var d = JSON.parse(txt);
+          if (Array.isArray(d) || (d && Array.isArray(d.items))) libraryImport(f);
+          else if (d && d.chords && applyProject(d)) { toast('프로젝트를 불러왔습니다', 'ok'); renderVocalBadge(); renderAmb(); }
+          else toast('읽을 수 있는 프로젝트가 아닙니다', 'err');
+        } catch (e){ toast('파일을 읽을 수 없습니다', 'err'); }
+      };
+      fr.readAsText(f);
+    };
+    inp.click();
+  });
+  var exp = $('btn-lib-export'); if (exp) exp.addEventListener('click', libraryExport);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-snap-save]'), function(b){
+    b.addEventListener('click', function(){ snapSave(b.dataset.snapSave); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-snap-load]'), function(b){
+    b.addEventListener('click', function(){ snapLoad(b.dataset.snapLoad); });
+  });
+  var st = $('btn-snap-toggle'); if (st) st.addEventListener('click', snapToggle);
+  renderLibrary(); renderSnap();
+  drawXYPad();
+}
+
+/* 부팅 — 엔진(10~17)과 v6 기능(18)이 모두 준비된 뒤 */
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
 

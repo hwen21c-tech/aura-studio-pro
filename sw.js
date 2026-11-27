@@ -7,13 +7,15 @@
    · 오프라인 셸: 화면 + 매니페스트 + 아이콘만 담는다.
    ============================================================ */
 const PREFIX = 'aura-studio-pro-';
-const VERSION = PREFIX + 'v3';
+const VERSION = PREFIX + 'v4';
+const APP_V = '20261128v8';   /* index.html 의 app.js?v= 와 같아야 오프라인에서도 앱이 열린다 */
 const BASE = new URL('./', self.location).pathname;   // 예: /shorts-studio-pro/
 const SHELL = [
   BASE,
   BASE + 'index.html',
   BASE + 'manifest.json',
   BASE + 'app.js',
+  BASE + 'app.js?v=' + APP_V,
   BASE + 'icons/aura-192.png',
   BASE + 'icons/aura-512.png',
   BASE + 'icons/aura-maskable-512.png',

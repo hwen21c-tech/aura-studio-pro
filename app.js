@@ -1688,6 +1688,12 @@ function applyProject(p){
   refreshLoopInfo();
   drawAll();
   updateSamplerStatus();
+  if (typeof renderDrumSeq === 'function') renderDrumSeq();
+  if (typeof renderVocalBadge === 'function') renderVocalBadge();
+  if (typeof renderAmb === 'function') renderAmb();
+  if (typeof renderTeleprompter === 'function') renderTeleprompter();
+  if (typeof drawXYPad === 'function') drawXYPad();
+  if (typeof syncV6Controls === 'function') syncV6Controls();
   return true;
 }
 function saveProject(){
@@ -3932,7 +3938,7 @@ function mutateArrangement(){
   if (!byRole.vocal || !byRole.vocal.locked) S.vocal = genVocal(seed + 11);
 
   rebuildEvents(); renderMixer(); drawAll(); refreshStats(); refreshLoopInfo();
-  renderVocalBadge(); saveSettings();
+  renderVocalBadge(); renderDrumSeq(); saveSettings();
   if (AU.ctx) loadNeeded(null).then(function(){ updateSamplerStatus(); renderMixer(); }).catch(function(){});
   toast(kept.length
     ? '🔒 ' + kept.join('·') + ' 은 그대로, 나머지를 새로 리믹스했습니다'
@@ -4124,10 +4130,10 @@ function setVocal(id){
     S.vocal = genVocal((Date.now() & 0xffff) + 41);
   }
   refreshMix(); renderMixer(); renderVocalBadge(); rebuildEvents(); refreshStats(); saveSettings();
-  if (AU.ctx) loadNeeded(null).then(function(){ updateSamperOrNothing(); }).catch(function(){});
+  if (AU.ctx) loadNeeded(null).then(function(){ updateSamplerAfterVocal(); }).catch(function(){});
   toast(id === 'off' ? '보컬 패드를 껐습니다' : '보컬 패드 — ' + (INST[id] ? INST[id].name : id), 'ok');
 }
-function updateSamperOrNothing(){ try { updateSamplerStatus(); renderMixer(); } catch (e) {} }
+function updateSamplerAfterVocal(){ try { updateSamplerStatus(); renderMixer(); } catch (e) {} }
 
 /* =======================================================
    13-5. 마이크 비트박스 → 드럼
@@ -4456,7 +4462,7 @@ function snapLoad(slot, quiet){
   if (!s[slot]){ if (!quiet) toast('스냅샷 ' + slot + '이 비어 있습니다', 'warn'); return false; }
   if (!applyProject(s[slot])) return false;
   S.snapActive = slot;
-  renderSnap(); renderVocalBadge(); renderAmb(); drawXYPad();
+  renderSnap(); renderVocalBadge(); renderAmb(); renderDrumSeq(); renderTeleprompter(); drawXYPad(); syncV6Controls();
   if (!quiet) toast('스냅샷 ' + slot + '을 불러왔습니다', 'ok');
   return true;
 }

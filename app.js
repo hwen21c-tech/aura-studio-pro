@@ -2520,6 +2520,12 @@ function boot(){
 
   /* 화면 복귀 시 다시 그리기 */
   document.addEventListener('visibilitychange', function(){ if (!document.hidden) drawAll(); });
+
+  /* 매니페스트 바로가기(?tab=hum 등) */
+  try {
+    var q = new URLSearchParams(location.search), tb = q.get('tab');
+    if (tb && ['compose','seq','hum','mix','export'].indexOf(tb) >= 0) switchTab(tb);
+  } catch (e) {}
 }
 
 /* 테스트 훅 */

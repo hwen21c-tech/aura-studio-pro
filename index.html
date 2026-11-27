@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>AURA Studio Pro — AI 작곡 · 허밍 편곡 · 쇼츠 BGM 스튜디오</title>
+<meta name="description" content="한 줄 무드로 AI가 코드·멜로디·드럼을 짜고, 실제 악기 샘플로 16마디를 연주하며, 15·30·60초 심리스 루프 WAV와 MIDI로 내보내는 브라우저 작곡 스튜디오." />
+<meta id="metaThemeColor" name="theme-color" content="#0b0f1a" />
+
+<!-- 홈 화면 독립 앱(PWA) -->
+<link rel="manifest" href="/manifest.json" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="AURA" />
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/aura-apple-180.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/aura-192.png" />
+
+<script>
+  /* 첫 페인트 전에 테마 적용 — 다크 기본, 라이트 저장값 반영 */
+  (function () {
+    try {
+      var t = localStorage.getItem('aura_theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  })();
+</script>
+
+<style>
+/* ============================================================
+   AURA Studio Pro — 디자인 토큰
+   ============================================================ */
+:root, [data-theme="dark"]{
+  --bg:#070a12; --bg2:#0b1020; --panel:#111726; --panel2:#0d1322; --input:#0a0f1c;
+  --line:#1f2940; --line2:rgba(148,163,184,.14);
+  --tx:#eef2f9; --tx2:#9aa8bf; --tx3:#64748b;
+  --cyan:#22d3ee; --violet:#a78bfa; --amber:#f59e0b; --green:#10b981; --rose:#f43f5e; --pink:#ec4899;
+  --cyan-soft:rgba(34,211,238,.14); --violet-soft:rgba(167,139,250,.16); --green-soft:rgba(16,185,129,.14);
+  --amber-soft:rgba(245,158,11,.14); --rose-soft:rgba(244,63,94,.14);
+  --shadow:0 12px 34px rgba(0,0,0,.45); --on-accent:#04121a;
+  --track:rgba(148,163,184,.22);
+  --hdr:rgba(9,13,23,.86);
+}
+[data-theme="light"]{
+  --bg:#eef1f8; --bg2:#f6f8fc; --panel:#ffffff; --panel2:#f7f9fd; --input:#ffffff;
+  --line:#d9e0ee; --line2:rgba(15,23,42,.08);
+  --tx:#0f172a; --tx2:#4a5a72; --tx3:#7b8798;
+  --cyan:#0891b2; --violet:#5b4bd6; --amber:#c2760a; --green:#059669; --rose:#e11d48; --pink:#db2777;
+  --cyan-soft:rgba(8,145,178,.10); --violet-soft:rgba(91,75,214,.10); --green-soft:rgba(5,150,105,.10);
+  --amber-soft:rgba(194,118,10,.12); --rose-soft:rgba(225,29,72,.10);
+  --shadow:0 8px 26px rgba(15,23,42,.08); --on-accent:#ffffff;
+  --track:rgba(15,23,42,.12);
+  --hdr:rgba(255,255,255,.9);
+}
+*,*::before,*::after{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(1100px 520px at 8% -8%, var(--cyan-soft), transparent 62%),
+    radial-gradient(900px 480px at 96% 4%, var(--violet-soft), transparent 60%),
+    var(--bg);
+  color:var(--tx);
+  font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',system-ui,-apple-system,sans-serif;
+  font-size:14px; line-height:1.45;
+  -webkit-text-size-adjust:100%;
+  min-height:100dvh;
+  overflow-x:hidden;
+  transition:background-color .22s ease, color .22s ease;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.mono{font-family:ui-monospace,'SF Mono',Menlo,Consolas,'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;}
+button{font-family:inherit;font-size:inherit;color:inherit;background:none;border:none;cursor:pointer;}
+select,input,textarea{font-family:inherit;font-size:inherit;color:var(--tx);}
+h1,h2,h3,h4,p{margin:0;}
+.hidden{display:none !important;}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}
+
+/* ---------- 공통 표면 ---------- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:13px;}
+.card+.card{margin-top:10px;}
+.sub{background:var(--panel2);border:1px solid var(--line2);border-radius:12px;}
+.sec-title{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:800;letter-spacing:-.01em;}
+.sec-title .tag{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:var(--cyan-soft);color:var(--cyan);}
+.desc{font-size:11.5px;color:var(--tx2);line-height:1.5;}
+.dim{color:var(--tx2);}
+.faint{color:var(--tx3);}
+.row{display:flex;align-items:center;gap:8px;}
+.row.wrap{flex-wrap:wrap;}
+.between{justify-content:space-between;}
+.col{display:flex;flex-direction:column;gap:8px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-bottom:5px;}
+
+/* ---------- 입력 ---------- */
+.inp,select.inp,textarea.inp{
+  width:100%;background:var(--input);border:1px solid var(--line);border-radius:10px;
+  padding:8px 10px;font-size:13px;outline:none;transition:border-color .15s ease,box-shadow .15s ease;
+}
+.inp:focus{border-color:var(--cyan);box-shadow:0 0 0 3px var(--cyan-soft);}
+textarea.inp{resize:none;line-height:1.5;}
+select.inp{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--tx3) 50%),linear-gradient(135deg,var(--tx3) 50%,transparent 50%);
+  background-position:calc(100% - 15px) 50%,calc(100% - 10px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:26px;}
+
+/* ---------- 버튼 ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  background:var(--panel2);border:1px solid var(--line);color:var(--tx);
+  border-radius:11px;padding:8px 12px;font-size:12.5px;font-weight:700;
+  transition:transform .12s ease,background-color .15s ease,border-color .15s ease,opacity .15s;white-space:nowrap;}
+.btn:hover{background:var(--line2);}
+.btn:active{transform:scale(.97);}
+.btn[disabled]{opacity:.5;pointer-events:none;}
+.btn.primary{background:linear-gradient(135deg,var(--cyan),var(--violet));color:var(--on-accent);border:none;box-shadow:0 8px 22px -10px var(--cyan);}
+.btn.violet{background:linear-gradient(135deg,var(--violet),var(--pink));color:#fff;border:none;}
+.btn.green{background:var(--green);color:var(--on-accent);border:none;}
+.btn.ghost{background:transparent;}
+.btn.sm{padding:5px 9px;font-size:11.5px;border-radius:9px;}
+.btn.block{width:100%;}
+.btn.icon{padding:7px 9px;font-size:13px;}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:999px;
+  background:var(--panel2);border:1px solid var(--line);font-size:11.5px;font-weight:700;color:var(--tx2);
+  transition:all .15s ease;white-space:nowrap;}
+.chip:active{transform:scale(.96);}
+.chip.on{background:var(--cyan-soft);border-color:var(--cyan);color:var(--cyan);}
+.chip.on.v{background:var(--violet-soft);border-color:var(--violet);color:var(--violet);}
+
+/* ---------- 슬라이더 ---------- */
+input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:999px;
+  background:var(--track);outline:none;margin:6px 0;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  background:var(--cyan);border:2px solid var(--panel);box-shadow:0 1px 5px rgba(0,0,0,.35);cursor:pointer;}
+input[type="range"]::-moz-range-thumb{width:14px;height:14px;border:none;border-radius:50%;background:var(--cyan);}
+input[type="range"].v::-webkit-slider-thumb{background:var(--violet);}
+input[type="range"].a::-webkit-slider-thumb{background:var(--amber);}
+input[type="range"].g::-webkit-slider-thumb{background:var(--green);}
+input[type="checkbox"]{accent-color:var(--cyan);width:15px;height:15px;}
+.switch{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--tx2);cursor:pointer;user-select:none;}
+
+/* ---------- 헤더 ---------- */
+header{position:sticky;top:0;z-index:40;background:var(--hdr);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);padding:8px 11px calc(8px);padding-top:calc(8px + env(safe-area-inset-top));}
+.hwrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+.brandrow{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.brand{display:flex;align-items:center;gap:9px;min-width:0;}
+.logo{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;flex:0 0 auto;
+  background:linear-gradient(135deg,var(--cyan),var(--violet) 58%,var(--pink));color:#fff;font-size:17px;font-weight:800;
+  box-shadow:0 8px 20px -8px var(--cyan);}
+.brand h1{font-size:15px;font-weight:900;letter-spacing:-.03em;line-height:1.1;white-space:nowrap;}
+.brand h1 span{background:linear-gradient(100deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.brand .sub2{display:flex;align-items:center;gap:5px;margin-top:2px;}
+.badge{font-size:9.5px;font-weight:800;letter-spacing:.02em;padding:2px 6px;border-radius:999px;
+  background:var(--cyan-soft);color:var(--cyan);border:1px solid var(--line);white-space:nowrap;}
+.badge.warn{background:var(--amber-soft);color:var(--amber);}
+.badge.ok{background:var(--green-soft);color:var(--green);}
+.status{font-size:9.5px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;}
+.tools{display:flex;align-items:center;gap:5px;flex:0 0 auto;}
+.transport{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:13px;padding:5px 7px;}
+.transport .play{background:linear-gradient(135deg,var(--cyan),var(--violet));color:var(--on-accent);
+  border-radius:9px;padding:6px 11px;font-size:12px;font-weight:900;min-width:74px;box-shadow:0 6px 16px -8px var(--cyan);}
+.transport .play:active{transform:scale(.96);}
+.transport .sq{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 7px;font-size:11.5px;font-weight:700;}
+.transport .sq.on{background:var(--violet-soft);border-color:var(--violet);color:var(--violet);}
+.bpmbox{display:flex;align-items:center;gap:4px;padding-left:7px;border-left:1px solid var(--line);}
+.bpmbox input{width:42px;text-align:center;background:var(--input);border:1px solid var(--line);border-radius:7px;
+  padding:3px 2px;font-size:11.5px;font-weight:800;color:var(--cyan);}
+.barpos{font-size:11px;font-weight:800;color:var(--amber);min-width:42px;text-align:center;}
+@media (max-width:400px){ .brand h1{font-size:14px;} .transport .play{min-width:64px;} .status{display:none;} }
+
+/* ---------- 탭 ---------- */
+nav.tabs{position:sticky;top:0;z-index:30;background:var(--hdr);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);}
+.tabwrap{max-width:1180px;margin:0 auto;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:6px 8px;}
+.tabwrap::-webkit-scrollbar{display:none;}
+.tabbtn{display:flex;align-items:center;gap:5px;padding:7px 11px;border-radius:11px;font-size:12px;font-weight:800;
+  color:var(--tx2);white-space:nowrap;border:1px solid transparent;transition:all .15s ease;}
+.tabbtn.on{background:var(--cyan-soft);color:var(--cyan);border-color:var(--cyan);}
+.tabbtn .ico{font-size:13px;}
+
+main{max-width:1180px;margin:0 auto;padding:11px 11px 34px;width:100%;}
+@media (min-width:900px){ .two{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;} .two>.card+.card{margin-top:0;} }
+
+/* ---------- 캔버스 ---------- */
+.cv{width:100%;display:block;border-radius:12px;background:var(--panel2);border:1px solid var(--line2);touch-action:none;}
+.cv.tall{height:210px;}
+.cv.mid{height:150px;}
+.cv.small{height:110px;}
+.cvhint{font-size:10px;color:var(--tx3);margin-top:5px;}
+
+/* ---------- 프리셋 ---------- */
+.presets{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+@media (max-width:360px){ .presets{grid-template-columns:repeat(2,1fr);} }
+.preset{padding:9px 4px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);
+  font-size:11px;font-weight:800;color:var(--tx2);text-align:center;line-height:1.25;transition:all .15s;}
+.preset .em{display:block;font-size:15px;margin-bottom:2px;}
+.preset.on{background:var(--cyan-soft);border-color:var(--cyan);color:var(--cyan);}
+
+/* ---------- 믹서 ---------- */
+.trk{background:var(--panel2);border:1px solid var(--line2);border-radius:12px;padding:9px;}
+.trk .top{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;}
+.trk .name{font-size:11.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ms{display:flex;gap:3px;}
+.ms button{width:22px;height:20px;border-radius:6px;font-size:9.5px;font-weight:900;background:var(--line2);color:var(--tx3);}
+.ms button.m.on{background:var(--rose-soft);color:var(--rose);}
+.ms button.s.on{background:var(--amber-soft);color:var(--amber);}
+.slot{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:800;padding:1px 5px;border-radius:999px;
+  background:var(--line2);color:var(--tx3);}
+.slot.live{background:var(--green-soft);color:var(--green);}
+.slot.synth{background:var(--violet-soft);color:var(--violet);}
+.slot.load{background:var(--amber-soft);color:var(--amber);}
+
+/* ---------- 진행/토스트 ---------- */
+.toasts{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom));z-index:9998;display:flex;flex-direction:column;
+  align-items:center;gap:6px;pointer-events:none;padding:0 12px;}
+.toast{max-width:420px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--cyan);
+  border-radius:11px;padding:9px 12px;font-size:12px;font-weight:700;box-shadow:0 12px 30px rgba(0,0,0,.4);
+  animation:tin .18s ease;}
+.toast.warn{border-left-color:var(--amber);}
+.toast.err{border-left-color:var(--rose);}
+.toast.ok{border-left-color:var(--green);}
+@keyframes tin{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.prog{height:4px;border-radius:999px;background:var(--track);overflow:hidden;}
+.prog > i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--violet));transition:width .2s ease;}
+
+/* ---------- 모달 ---------- */
+.modal{position:fixed;inset:0;z-index:9999;background:rgba(3,6,14,.72);backdrop-filter:blur(6px);
+  display:flex;align-items:flex-end;justify-content:center;padding:0;}
+@media (min-width:640px){ .modal{align-items:center;padding:16px;} }
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:680px;
+  max-height:86dvh;display:flex;flex-direction:column;box-shadow:0 -10px 40px rgba(0,0,0,.5);}
+@media (min-width:640px){ .sheet{border-radius:18px;} }
+.sheet header{position:static;border-bottom:1px solid var(--line);background:transparent;backdrop-filter:none;
+  padding:12px 14px;display:flex;align-items:center;justify-content:space-between;}
+.sheet .body{padding:12px 14px 18px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.sheet h3{font-size:14px;font-weight:900;}
+.gcard{background:var(--panel2);border:1px solid var(--line2);border-radius:12px;padding:10px 12px;margin-bottom:8px;}
+.gcard h4{font-size:12.5px;font-weight:800;margin-bottom:4px;display:flex;gap:6px;align-items:center;}
+.gcard p,.gcard li{font-size:11.5px;color:var(--tx2);line-height:1.6;}
+.gcard ul{margin:4px 0 0;padding-left:16px;}
+.kbd{display:inline-block;padding:1px 5px;border-radius:5px;background:var(--line2);font-size:10.5px;font-weight:800;color:var(--tx);}
+
+/* ---------- PIN 잠금 ---------- */
+#pinLockOverlay{display:none;}
+html.pin-locked body > *:not(#pinLockOverlay){visibility:hidden !important;}
+html.pin-locked #pinLockOverlay{display:flex !important;}
+.pin-dot{width:13px;height:13px;border-radius:50%;border:2px solid #334155;background:transparent;transition:all .12s ease;}
+.pin-key{height:52px;border-radius:14px;background:#131b2c;border:1px solid #22304a;color:#e2e8f0;
+  font-size:19px;font-weight:800;transition:transform .1s ease,background .12s ease;}
+.pin-key:active{transform:scale(.94);background:#1c2740;}
+@keyframes pinShake{0%,100%{transform:translateX(0);}20%{transform:translateX(-7px);}40%{transform:translateX(7px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
+
+/* ---------- 유틸 ---------- */
+.sep{height:1px;background:var(--line2);margin:9px 0;}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;}
+.kv b{font-weight:800;}
+.pill{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:var(--line2);color:var(--tx2);}
+.stat{background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:7px 8px;text-align:center;}
+.stat .v{font-size:13px;font-weight:900;}
+.stat .k{font-size:9.5px;color:var(--tx3);font-weight:700;margin-top:1px;}
+.humeter{height:7px;border-radius:999px;background:var(--track);overflow:hidden;}
+.humeter > i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--amber),var(--rose));transition:width .06s linear;}
+.recpulse{animation:recp 1.25s infinite;}
+@keyframes recp{0%,100%{box-shadow:0 0 0 0 rgba(244,63,94,.6);}50%{box-shadow:0 0 0 11px rgba(244,63,94,0);}}
+.tiny{font-size:10px;color:var(--tx3);line-height:1.5;}
+.bars-strip{display:flex;gap:2px;margin-top:7px;}
+.bars-strip i{flex:1;height:8px;border-radius:2px;background:var(--track);}
+</style>
+</head>
+<body>
+
+<!-- ============ 가족 PIN 0623 잠금 ============ -->
+<div id="pinLockOverlay" style="position:fixed;inset:0;width:100vw;height:100dvh;background:#070a12;z-index:999999;display:none;flex-direction:column;justify-content:center;align-items:center;padding:20px;">
+  <div id="pinCard" style="width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:17px;">
+    <div style="width:56px;height:56px;border-radius:17px;background:linear-gradient(135deg,#22d3ee,#a78bfa 60%,#ec4899);display:grid;place-items:center;box-shadow:0 14px 34px -14px #22d3ee;">
+      <span style="font-size:26px;line-height:1;">♫</span>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:16px;font-weight:900;color:#f1f5f9;letter-spacing:-.02em;">AURA Studio Pro</div>
+      <div style="font-size:11.5px;color:#94a3b8;margin-top:4px;">가족 PIN 4자리를 입력해 주세요</div>
+    </div>
+    <div style="display:flex;gap:12px;margin:1px 0;">
+      <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
+      <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
+    </div>
+    <div id="pinErrMsg" style="min-height:16px;font-size:11.5px;color:#fb7185;text-align:center;"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,64px);gap:10px;">
+      <button type="button" class="pin-key" onclick="pressPin(1)">1</button>
+      <button type="button" class="pin-key" onclick="pressPin(2)">2</button>
+      <button type="button" class="pin-key" onclick="pressPin(3)">3</button>
+      <button type="button" class="pin-key" onclick="pressPin(4)">4</button>
+      <button type="button" class="pin-key" onclick="pressPin(5)">5</button>
+      <button type="button" class="pin-key" onclick="pressPin(6)">6</button>
+      <button type="button" class="pin-key" onclick="pressPin(7)">7</button>
+      <button type="button" class="pin-key" onclick="pressPin(8)">8</button>
+      <button type="button" class="pin-key" onclick="pressPin(9)">9</button>
+      <button type="button" class="pin-key" onclick="clearPin()" style="font-size:12px;color:#94a3b8;">C</button>
+      <button type="button" class="pin-key" onclick="pressPin(0)">0</button>
+      <button type="button" class="pin-key" onclick="backspacePin()" style="font-size:15px;color:#94a3b8;">⌫</button>
+    </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#cbd5e1;cursor:pointer;user-select:none;">
+      <input type="checkbox" id="chkAutoLogin" checked style="accent-color:#38bdf8;width:15px;height:15px;" />
+      <span>이 기기에서 유지 (다음부터 바로 열림)</span>
+    </label>
+    <div style="font-size:10.5px;color:#64748b;line-height:1.5;text-align:center;">
+      관제탑·쇼츠·이모티콘 스튜디오와 같은 가족 PIN입니다<br>숫자키·Backspace·Enter 로도 입력할 수 있어요
+    </div>
+  </div>
+</div>
+
+<!-- PIN 엔진 (본문 스크립트가 멈춰도 해제는 항상 동작) -->
+<script>
+(function () {
+  var PIN = '0623';
+  var KEY = 'stock_dashboard_pin_auth';
+  var VAL = '0623_verified';
+  var entered = '';
+  function isUnlocked() {
+    try { return (localStorage.getItem(KEY) === VAL) || (sessionStorage.getItem(KEY) === VAL); }
+    catch (e) { return true; }
+  }
+  function paint(locked) {
+    try {
+      var root = document.documentElement;
+      if (locked) { if (root.className.indexOf('pin-locked') < 0) root.className += ' pin-locked'; }
+      else { root.className = root.className.replace(/\s*pin-locked/g, ''); }
+      var ov = document.getElementById('pinLockOverlay');
+      if (ov) ov.style.display = locked ? 'flex' : 'none';
+    } catch (e) {}
+  }
+  function dots() {
+    for (var i = 0; i < 4; i++) {
+      var d = document.getElementById('dot' + i);
+      if (!d) continue;
+      if (i < entered.length) { d.style.background = '#38bdf8'; d.style.borderColor = '#38bdf8'; }
+      else { d.style.background = 'transparent'; d.style.borderColor = '#334155'; }
+    }
+  }
+  function say(msg) { var e = document.getElementById('pinErrMsg'); if (e) e.textContent = msg || ''; }
+  function shake() {
+    var c = document.getElementById('pinCard');
+    if (!c) return;
+    c.style.animation = 'pinShake .34s ease';
+    setTimeout(function () { c.style.animation = ''; }, 380);
+  }
+  function remember() { var chk = document.getElementById('chkAutoLogin'); return !chk || chk.checked; }
+  function unlock() {
+    var keep = remember();
+    try {
+      if (keep) { localStorage.setItem(KEY, VAL); try { sessionStorage.removeItem(KEY); } catch (e) {} }
+      else { try { localStorage.removeItem(KEY); } catch (e) {} sessionStorage.setItem(KEY, VAL); }
+    } catch (e) { try { sessionStorage.setItem(KEY, VAL); } catch (e2) {} }
+    entered = ''; dots(); say(''); paint(false);
+    try { window.dispatchEvent(new CustomEvent('aura:unlocked')); } catch (e) {}
+  }
+  function verify() {
+    if (entered === PIN) { unlock(); return; }
+    say('❌ PIN이 맞지 않습니다. 다시 입력해 주세요.');
+    entered = ''; dots(); shake();
+  }
+  window.pressPin = function (n) {
+    n = String(n);
+    if (!/^[0-9]$/.test(n)) return;
+    if (entered.length >= 4) return;
+    entered += n; dots(); say('');
+    if (entered.length === 4) setTimeout(verify, 110);
+  };
+  window.clearPin = function () { entered = ''; dots(); say(''); };
+  window.backspacePin = function () { if (!entered.length) return; entered = entered.slice(0, -1); dots(); say(''); };
+  window.lockAura = function () {
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    try { sessionStorage.removeItem(KEY); } catch (e) {}
+    entered = ''; dots(); say(''); paint(true);
+  };
+  window.addEventListener('keydown', function (e) {
+    if (!isUnlocked()) {
+      if (/^[0-9]$/.test(e.key)) { e.preventDefault(); window.pressPin(e.key); }
+      else if (e.key === 'Backspace') { e.preventDefault(); window.backspacePin(); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (entered.length === 4) verify(); }
+      else if (e.key === 'Escape') { e.preventDefault(); window.clearPin(); }
+    }
+  });
+  if (isUnlocked()) paint(false); else paint(true);
+})();
+</script>
+
+<!-- ============ 헤더 ============ -->
+<header>
+  <div class="hwrap">
+    <div class="brandrow">
+      <div class="brand">
+        <div class="logo">♫</div>
+        <div style="min-width:0;">
+          <h1>AURA <span>Studio</span> <span style="font-size:9px;font-weight:900;color:var(--pink);-webkit-text-fill-color:var(--pink);">PRO</span></h1>
+          <div class="sub2">
+            <span class="badge" id="engine-badge">샘플 엔진 대기</span>
+            <span class="status" id="sampler-status">악기 샘플 준비 전</span>
+          </div>
+        </div>
+      </div>
+      <div class="tools">
+        <button class="btn icon" id="btn-install" title="홈 화면에 앱으로 설치" aria-label="앱 설치" style="display:none;">📲</button>
+        <button class="btn icon" id="btn-theme-toggle" title="라이트/다크 테마" aria-label="테마 전환">🌙</button>
+        <button class="btn icon" id="btn-guide" title="사용설명서" aria-label="사용설명서">❓</button>
+        <button class="btn icon" id="btn-lock" title="지금 잠그기" aria-label="잠그기" onclick="lockAura()">🔒</button>
+      </div>
+    </div>
+
+    <div class="transport">
+      <button class="play" id="btn-play">▶ 재생</button>
+      <button class="sq" id="btn-stop" aria-label="정지">■</button>
+      <button class="sq on" id="btn-loop" title="구간 반복" aria-label="반복">↻</button>
+      <div class="bpmbox">
+        <span class="mono faint" style="font-size:9.5px;font-weight:800;">BPM</span>
+        <input id="header-bpm" type="number" min="60" max="170" value="96" aria-label="BPM" />
+      </div>
+      <div class="bpmbox">
+        <span class="mono faint" style="font-size:9.5px;font-weight:800;">BAR</span>
+        <span class="barpos mono" id="bar-display">01.1</span>
+      </div>
+      <div style="flex:1;"></div>
+      <div style="width:56px;height:26px;border-radius:8px;overflow:hidden;background:var(--panel);display:none;" id="spec-wrap">
+        <canvas id="spectrum-canvas" style="width:100%;height:100%;display:block;"></canvas>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ 탭 ============ -->
+<nav class="tabs">
+  <div class="tabwrap" id="tabwrap">
+    <button class="tabbtn on" data-tab="compose"><span class="ico">✨</span>작곡</button>
+    <button class="tabbtn" data-tab="seq"><span class="ico">🎹</span>시퀀스</button>
+    <button class="tabbtn" data-tab="hum"><span class="ico">🎤</span>허밍</button>
+    <button class="tabbtn" data-tab="mix"><span class="ico">🎚</span>믹스</button>
+    <button class="tabbtn" data-tab="export"><span class="ico">⬇</span>내보내기</button>
+  </div>
+</nav>
+
+<main>
+<!-- ============================ 1) 작곡 ============================ -->
+<section id="tab-compose">
+
+  <div class="card">
+    <div class="row between" style="margin-bottom:8px;">
+      <div class="sec-title">✨ 무드 → 음악 <span class="tag">AI</span></div>
+      <span class="pill mono" id="engine-note">Gemini 연결</span>
+    </div>
+
+    <label class="label" for="mood-text">원하는 분위기·장면·장르를 한글로 적어 주세요</label>
+    <textarea id="mood-text" rows="3" class="inp" maxlength="220" placeholder="예) 비 오는 밤 드라이브, 몽환적인 시티팝과 따뜻한 일렉트릭 피아노">비 오는 밤 드라이브, 몽환적인 시티팝과 따뜻한 일렉트릭 피아노</textarea>
+
+    <div class="row wrap" id="mood-chips" style="margin-top:8px;gap:5px;">
+      <button class="chip" data-mood="경제 뉴스 쇼츠 오프닝, 긴장감 있는 미니멀 신스와 묵직한 저음">📉 긴장감 쇼츠</button>
+      <button class="chip" data-mood="비 오는 날 창가 카페, 따뜻한 로파이 힙합과 빗소리 무드">☕ 비 오는 카페</button>
+      <button class="chip" data-mood="아침 햇살 산책, 산뜻한 어쿠스틱 기타와 가벼운 피아노">🌤 아침 산책</button>
+      <button class="chip" data-mood="네온 야경 도심 질주, 80년대 신스웨이브">🌃 네온 드라이브</button>
+      <button class="chip" data-mood="가족 브이로그 인트로, 밝고 귀여운 마림바와 통통 튀는 드럼">👨‍👩‍👧 가족 브이로그</button>
+      <button class="chip" data-mood="영화 예고편 같은 웅장한 오케스트라, 감동적인 스트링과 피아노">🎬 시네마틱</button>
+    </div>
+
+    <div class="row" style="margin-top:9px;gap:6px;">
+      <button class="btn primary" id="btn-compose" style="flex:1;">🎵 AI 작곡 시작</button>
+      <button class="btn" id="btn-compose-local" title="서버 없이 내장 엔진으로 바로 작곡" aria-label="내장 엔진 작곡">🎲</button>
+    </div>
+    <div class="prog" style="margin-top:9px;display:none;" id="compose-prog"><i></i></div>
+  </div>
+
+  <div class="card hidden" id="ai-result">
+    <div class="row between" style="align-items:flex-start;">
+      <div style="min-width:0;">
+        <div class="sec-title" id="ai-title" style="font-size:14px;">—</div>
+        <div class="desc" id="ai-meta" style="margin-top:3px;">—</div>
+      </div>
+      <button class="btn sm" id="btn-regen" title="같은 무드로 다시">↻</button>
+    </div>
+    <div class="sep"></div>
+    <div class="desc" id="ai-tip">—</div>
+  </div>
+
+  <div class="card">
+    <div class="sec-title" style="margin-bottom:8px;">🎛 프리셋 <span class="tag">6</span></div>
+    <div class="presets" id="preset-buttons"></div>
+  </div>
+
+  <div class="two">
+    <div class="card">
+      <div class="sec-title" style="margin-bottom:9px;">🎼 키 · 템포</div>
+      <div class="grid2">
+        <div>
+          <label class="label" for="key-select">키(조)</label>
+          <select id="key-select" class="inp">
+            <option value="0">C</option><option value="1">C# / Db</option><option value="2">D</option>
+            <option value="3">Eb</option><option value="4">E</option><option value="5">F</option>
+            <option value="6">F# / Gb</option><option value="7">G</option><option value="8">Ab</option>
+            <option value="9" selected>A</option><option value="10">Bb</option><option value="11">B</option>
+          </select>
+        </div>
+        <div>
+          <label class="label" for="mode-select">스케일</label>
+          <select id="mode-select" class="inp">
+            <option value="minor" selected>단조 (minor)</option>
+            <option value="major">장조 (major)</option>
+            <option value="dorian">도리안 (dorian)</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <div class="row between"><span class="label" style="margin:0;">템포</span>
+          <span class="mono" style="font-size:12px;font-weight:800;color:var(--cyan);"><span id="bpm-val">96</span> BPM</span></div>
+        <input id="bpm-slider" type="range" min="60" max="170" value="96" aria-label="BPM" />
+      </div>
+      <div style="margin-top:8px;">
+        <div class="row between"><span class="label" style="margin:0;">밝기 (톤)</span>
+          <span class="mono" style="font-size:11.5px;font-weight:800;color:var(--amber);"><span id="bright-val">60</span>%</span></div>
+        <input id="bright-slider" class="a" type="range" min="0" max="100" value="60" aria-label="밝기" />
+      </div>
+      <div style="margin-top:6px;">
+        <div class="row between"><span class="label" style="margin:0;">에너지 (밀도)</span>
+          <span class="mono" style="font-size:11.5px;font-weight:800;color:var(--violet);"><span id="energy-val">70</span>%</span></div>
+        <input id="energy-slider" class="v" type="range" min="0" max="100" value="70" aria-label="에너지" />
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title" style="margin-bottom:9px;">🧱 곡 구조 <span class="tag">A/B 전개</span></div>
+      <div class="row" style="gap:6px;">
+        <button class="chip" data-bars="4">4마디</button>
+        <button class="chip" data-bars="8">8마디</button>
+        <button class="chip on" data-bars="16">16마디</button>
+      </div>
+      <div class="bars-strip" id="struct-strip"></div>
+      <div class="desc" id="struct-desc" style="margin-top:7px;">도입 → A → B → A′ → 여운</div>
+      <div class="sep"></div>
+      <label class="switch" style="margin-bottom:7px;">
+        <input type="checkbox" id="chk-humanize" checked />
+        <span>휴머나이즈 (강약·타이밍 미세 흔들기)</span>
+      </label>
+      <label class="switch" style="margin-bottom:7px;">
+        <input type="checkbox" id="chk-fill" checked />
+        <span>4마디 끝 드럼 필인</span>
+      </label>
+      <div class="row between" style="margin-top:2px;">
+        <span class="label" style="margin:0;">스윙</span>
+        <span class="mono" style="font-size:11.5px;font-weight:800;color:var(--amber);"><span id="swing-val">12</span>%</span>
+      </div>
+      <input id="swing-slider" class="a" type="range" min="0" max="60" value="12" aria-label="스윙" />
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row between" style="margin-bottom:6px;">
+      <span class="sec-title">⚡ AI 전송용 영문 프롬프트</span>
+      <button class="btn sm" id="btn-copy-prompt">복사</button>
+    </div>
+    <textarea id="ai-prompt" rows="2" class="inp mono" style="font-size:10.5px;color:var(--tx2);" readonly></textarea>
+    <div class="tiny" style="margin-top:5px;">음악 생성형 AI(수노·유디오·리프트 등)에 그대로 붙여 넣어 고퀄리티 음원을 뽑을 때 씁니다. 이 앱의 반주·편곡·루프 내보내기는 키 없이 전부 브라우저에서 돕니다.</div>
+  </div>
+
+</section>
+
+<!-- ============================ 2) 시퀀스 ============================ -->
+<section id="tab-seq" class="hidden">
+
+  <div class="card">
+    <div class="row between" style="margin-bottom:8px;">
+      <div>
+        <div class="sec-title">기승전결 에너지 <span class="tag">16 BAR</span></div>
+        <div class="desc" style="margin-top:3px;">그래프를 드래그하면 그 마디의 악기 밀도·강약이 바뀝니다.</div>
+      </div>
+    </div>
+    <canvas id="energy-canvas" class="cv mid"></canvas>
+    <div class="row wrap" style="margin-top:7px;gap:5px;">
+      <button class="chip" data-curve="standard">기승전결 표준</button>
+      <button class="chip" data-curve="buildup">점진적 고조</button>
+      <button class="chip" data-curve="drop">초반 폭발</button>
+      <button class="chip" data-curve="chill">잔잔한 BGM</button>
+      <button class="chip" data-curve="wave">물결</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row between" style="margin-bottom:7px;flex-wrap:wrap;gap:6px;">
+      <div class="sec-title">🎹 피아노 롤 <span class="tag" id="roll-range">1–2마디</span></div>
+      <div class="row" style="gap:4px;">
+        <button class="btn sm" id="roll-prev">‹</button>
+        <button class="btn sm" id="roll-zoom">4마디</button>
+        <button class="btn sm" id="roll-next">›</button>
+      </div>
+    </div>
+    <canvas id="roll-canvas" class="cv tall"></canvas>
+    <div class="row between" style="margin-top:6px;flex-wrap:wrap;gap:6px;">
+      <div class="cvhint">탭 = 음 추가/삭제 · 드래그 = 칠하기</div>
+      <div class="row" style="gap:5px;">
+        <select id="note-len" class="inp" style="width:auto;padding:4px 24px 4px 8px;font-size:11px;">
+          <option value="1">16분</option>
+          <option value="2" selected>8분</option>
+          <option value="4">4분</option>
+          <option value="8">2분</option>
+        </select>
+        <button class="btn sm" id="btn-clear-bar">이 마디 지우기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row between" style="margin-bottom:6px;">
+      <div class="sec-title">🥁 드럼 그리드 <span class="tag" id="drum-bar-label">1마디</span></div>
+      <div class="row" style="gap:4px;">
+        <button class="btn sm" id="drum-prev">‹</button>
+        <button class="btn sm" id="drum-next">›</button>
+      </div>
+    </div>
+    <canvas id="drum-canvas" class="cv" style="height:126px;"></canvas>
+    <div class="cvhint" style="margin-top:5px;">행 = 킥 · 스네어 · 하이햇 · 오픈햇. 탭해서 직접 고칠 수 있어요.</div>
+  </div>
+
+  <div class="card">
+    <div class="row between" style="flex-wrap:wrap;gap:6px;">
+      <div class="sec-title">📊 지금 곡</div>
+      <button class="btn sm" id="btn-regen-code" title="코드 진행만 새로">코드 새로 ↻</button>
+    </div>
+    <div class="grid3" style="margin-top:8px;">
+      <div class="stat"><div class="v mono" id="stat-bars">16</div><div class="k">마디</div></div>
+      <div class="stat"><div class="v mono" id="stat-notes">0</div><div class="k">음표</div></div>
+      <div class="stat"><div class="v mono" id="stat-len">0.0s</div><div class="k">1회 길이</div></div>
+    </div>
+    <div class="sep"></div>
+    <div class="desc" id="chord-line" style="line-height:1.7;">—</div>
+  </div>
+
+</section>
+<!-- ============================ 3) 허밍 ============================ -->
+<section id="tab-hum" class="hidden">
+
+  <div class="card">
+    <div class="row between" style="margin-bottom:8px;">
+      <div>
+        <div class="sec-title">1단계 · 허밍 녹음 &amp; 음정 감지</div>
+        <div class="desc" style="margin-top:3px;">흥얼거리면 피치를 실시간으로 읽어 멜로디로 옮깁니다. 마이크가 없어도 데모로 전부 체험할 수 있어요.</div>
+      </div>
+      <span class="mono" id="hum-pitch-readout" style="font-size:12px;font-weight:800;color:var(--cyan);
+        background:var(--input);border:1px solid var(--line);border-radius:9px;padding:4px 9px;white-space:nowrap;">--</span>
+    </div>
+    <div class="humeter" id="hum-meter"><i></i></div>
+    <div class="grid2" style="margin-top:9px;">
+      <button class="btn" id="btn-mic-rec" style="background:var(--rose-soft);border-color:rgba(244,63,94,.35);color:var(--rose);">● 허밍 녹음</button>
+      <button class="btn" id="btn-hum-demo" style="background:var(--violet-soft);border-color:var(--violet);color:var(--violet);">🎧 샘플 데모</button>
+    </div>
+    <div class="tiny" style="margin-top:7px;" id="hum-status">마이크는 이 기기에서만 쓰이고, 녹음 파일은 어디에도 저장·전송되지 않습니다.</div>
+  </div>
+
+  <div class="card">
+    <div class="row between" style="margin-bottom:7px;flex-wrap:wrap;gap:6px;">
+      <div class="sec-title">2단계 · 클린 가이드 (1마디)</div>
+      <div class="row" style="gap:9px;">
+        <label class="switch"><input type="checkbox" id="chk-snap" checked /><span>음정 보정</span></label>
+        <label class="switch"><input type="checkbox" id="chk-quantize" checked /><span>박자 정렬</span></label>
+      </div>
+    </div>
+    <canvas id="hum-canvas" class="cv mid"></canvas>
+    <div class="cvhint" style="margin-top:5px;">칸을 눌러 직접 고칠 수도 있어요 (16분 음표 16칸).</div>
+    <div class="grid2" style="margin-top:9px;">
+      <button class="btn" id="btn-play-guide">🎹 가이드 듣기</button>
+      <button class="btn primary" id="btn-apply-guide">✨ 편곡에 반영</button>
+    </div>
+    <div class="sep"></div>
+    <div class="row between">
+      <span class="desc">가이드를 반영하면 <b>멜로디 트랙</b>이 이 음정으로 다시 짜이고, 16마디 전체에 변주가 붙습니다.</span>
+    </div>
+  </div>
+
+</section>
+
+<!-- ============================ 4) 믹스 ============================ -->
+<section id="tab-mix" class="hidden">
+
+  <div class="card">
+    <div class="row between" style="margin-bottom:9px;">
+      <div class="sec-title">🎚 5트랙 믹서 <span class="tag">실시간</span></div>
+      <span class="badge" id="mix-engine-badge">샘플 0/0</span>
+    </div>
+    <div class="col" id="mixer-container" style="gap:8px;"></div>
+    <div class="tiny" style="margin-top:8px;">악기를 바꾸면 그 자리에서 새 샘플을 받아 교체합니다(재생 중에도 가능). 샘플을 못 받으면 자동으로 신스로 대신 연주합니다.</div>
+  </div>
+
+  <div class="card">
+    <div class="row between" style="margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+      <div class="sec-title">🎛 마스터링 랙</div>
+      <label class="switch"><input type="checkbox" id="toggle-limiter" checked /><span>리미터 ON</span></label>
+    </div>
+    <div class="grid2" style="gap:8px;">
+      <div>
+        <div class="row between"><span class="label" style="margin:0;">LOW</span><span class="mono faint" id="val-eq-low" style="font-size:10.5px;">+1.0dB</span></div>
+        <input id="eq-low" type="range" min="-12" max="12" step="0.5" value="1" aria-label="저음" />
+      </div>
+      <div>
+        <div class="row between"><span class="label" style="margin:0;">MID</span><span class="mono faint" id="val-eq-mid" style="font-size:10.5px;">0.0dB</span></div>
+        <input id="eq-mid" type="range" min="-12" max="12" step="0.5" value="0" aria-label="중음" />
+      </div>
+      <div>
+        <div class="row between"><span class="label" style="margin:0;">HIGH</span><span class="mono faint" id="val-eq-high" style="font-size:10.5px;">+2.0dB</span></div>
+        <input id="eq-high" type="range" min="-12" max="12" step="0.5" value="2" aria-label="고음" />
+      </div>
+      <div>
+        <div class="row between"><span class="label" style="margin:0;">REVERB</span><span class="mono faint" id="val-reverb" style="font-size:10.5px;">28%</span></div>
+        <input id="fx-reverb" class="v" type="range" min="0" max="100" value="28" aria-label="리버브" />
+      </div>
+      <div>
+        <div class="row between"><span class="label" style="margin:0;">WARMTH</span><span class="mono faint" id="val-warmth" style="font-size:10.5px;">18%</span></div>
+        <input id="fx-warmth" class="a" type="range" min="0" max="100" value="18" aria-label="따뜻함" />
+      </div>
+      <div>
+        <div class="row between"><span class="label" style="margin:0;">MASTER</span><span class="mono faint" id="val-master" style="font-size:10.5px;">80%</span></div>
+        <input id="fx-master" class="g" type="range" min="0" max="100" value="80" aria-label="마스터 볼륨" />
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="row" style="gap:9px;">
+      <div style="flex:1;">
+        <canvas id="meter-canvas" class="cv" style="height:56px;"></canvas>
+      </div>
+    </div>
+    <div class="tiny" style="margin-top:6px;">리미터는 -1dBFS 천장으로 걸려 있어 쇼츠·유튜브에 올렸을 때 찢어지지 않습니다.</div>
+  </div>
+
+</section>
+
+<!-- ============================ 5) 내보내기 ============================ -->
+<section id="tab-export" class="hidden">
+
+  <div class="card">
+    <div class="sec-title" style="margin-bottom:8px;">🔁 루프 길이 <span class="tag">심리스</span></div>
+    <div class="row wrap" style="gap:6px;" id="loop-chips">
+      <button class="chip on" data-loop="15">15초</button>
+      <button class="chip" data-loop="30">30초</button>
+      <button class="chip" data-loop="60">60초</button>
+      <button class="chip" data-loop="4">4마디</button>
+      <button class="chip" data-loop="8">8마디</button>
+      <button class="chip" data-loop="16">16마디</button>
+    </div>
+    <div class="sub" style="padding:9px 10px;margin-top:9px;">
+      <div class="kv"><span class="dim">실제 길이</span><b class="mono" id="loop-sec">15.0초</b></div>
+      <div class="kv" style="margin-top:3px;"><span class="dim">마디 / 템포</span><b class="mono" id="loop-bars">6마디 · 96 BPM</b></div>
+      <div class="kv" style="margin-top:3px;"><span class="dim">이음매</span><b class="mono" id="loop-seam" style="color:var(--green);">끊김 없음 (테일 감아넣기)</b></div>
+    </div>
+    <label class="switch" style="margin-top:9px;"><input type="checkbox" id="chk-normalize" checked /><span>피크 정규화 (-1dBFS)</span></label>
+    <div class="prog" style="margin-top:9px;display:none;" id="export-prog"><i></i></div>
+    <div class="grid2" style="margin-top:10px;gap:8px;">
+      <button class="btn green" id="btn-export-wav">⬇ WAV 저장</button>
+      <button class="btn" id="btn-export-midi">🎹 MIDI 저장</button>
+    </div>
+    <div class="tiny" style="margin-top:7px;" id="export-note">들리는 그대로 오프라인에서 다시 렌더링합니다(샘플·EQ·리버브·리미터 동일). 노트북 없이 폰에서도 10초 안팎이면 끝납니다.</div>
+  </div>
+
+  <div class="card">
+    <div class="sec-title" style="margin-bottom:7px;">📁 프로젝트</div>
+    <div class="grid2" style="gap:8px;">
+      <button class="btn" id="btn-save-proj">💾 이 기기에 저장</button>
+      <button class="btn" id="btn-load-proj">📂 불러오기</button>
+    </div>
+    <button class="btn block" id="btn-download-proj" style="margin-top:8px;">⬇ 프로젝트 파일(.json) 내려받기</button>
+    <div class="tiny" style="margin-top:6px;">저장 항목: 코드·멜로디·드럼·에너지 곡선·믹서·템포. 다른 기기로 옮길 때는 JSON 파일을 쓰세요.</div>
+  </div>
+
+  <div class="card">
+    <div class="sec-title" style="margin-bottom:8px;">📱 쇼츠·릴스 BGM 팁</div>
+    <ul class="desc" style="padding-left:16px;margin:0;line-height:1.75;">
+      <li><b>15초</b>는 인트로·아웃트로, <b>30초</b>는 릴스 기본, <b>60초</b>는 유튜브 쇼츠 풀 길이에 맞춰 3종을 미리 뽑아 두면 편합니다.</li>
+      <li>영상 자막이 읽히도록 <b>멜로디 트랙 볼륨을 60% 아래</b>로 두고, 내보낼 때 HIGH를 살짝 올리면 폰 스피커에서 잘 들립니다.</li>
+      <li>말소리와 겹칠 때는 <b>LOW를 -1dB</b>, <b>REVERB 20% 이하</b>가 깔끔합니다.</li>
+      <li>몇 번 반복해도 어색하지 않게 <b>테일을 감아넣은 루프</b>로 렌더링합니다. 반복 재생에 딱 맞습니다.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="sec-title" style="margin-bottom:6px;">ℹ️ 이 스튜디오 정보</div>
+    <div class="kv"><span class="dim">엔진</span><b id="about-engine">—</b></div>
+    <div class="kv" style="margin-top:3px;"><span class="dim">악기 샘플</span><b id="about-samples">—</b></div>
+    <div class="kv" style="margin-top:3px;"><span class="dim">AI 작곡</span><b id="about-ai">—</b></div>
+    <div class="kv" style="margin-top:3px;"><span class="dim">버전</span><b class="mono">1.0.0</b></div>
+  </div>
+
+</section>
+</main>
+
+<!-- ============ 사용설명서 ============ -->
+<div class="modal hidden" id="guide-modal">
+  <div class="sheet">
+    <header>
+      <h3>❓ AURA Studio Pro 사용설명서</h3>
+      <button class="btn sm" id="btn-guide-close">닫기</button>
+    </header>
+    <div class="body">
+      <div class="gcard">
+        <h4>🎧 3분 만에 BGM 한 곡</h4>
+        <ul>
+          <li><b>① 작곡 탭</b>에서 분위기를 한글로 적고 <span class="kbd">AI 작곡 시작</span>을 누릅니다. (서버가 막히면 자동으로 내장 엔진이 대신 작곡합니다)</li>
+          <li><b>② 시퀀스 탭</b>에서 피아노 롤·드럼을 직접 고치고 에너지 그래프로 기승전결을 잡습니다.</li>
+          <li><b>③ 내보내기 탭</b>에서 15·30·60초 루프를 골라 <span class="kbd">WAV 저장</span> → 쇼츠 편집기에 그대로 올립니다.</li>
+        </ul>
+      </div>
+      <div class="gcard">
+        <h4>✨ 작곡 탭</h4>
+        <ul>
+          <li><b>무드</b>: 장면·장르·악기·분위기를 자유롭게. 길수록 결과가 좋습니다.</li>
+          <li><b>키/스케일</b>: 단조(감성·시티팝) · 장조(밝은 팝) · 도리안(세련된 재즈풍).</li>
+          <li><b>밝기</b>는 고음역과 화음의 밝기, <b>에너지</b>는 음표 밀도와 드럼 세기를 정합니다.</li>
+          <li><b>프리셋</b>은 키·템포·악기 조합을 한 번에 바꿉니다.</li>
+          <li><b>휴머나이즈</b>를 켜면 강약과 타이밍이 사람처럼 조금씩 흔들립니다. 기계적인 데모 느낌을 없애는 스위치입니다.</li>
+          <li><b>스윙</b>은 홀수 16분음을 뒤로 밀어 그루브를 만듭니다(로파이·힙합 20~40%).</li>
+        </ul>
+      </div>
+      <div class="gcard">
+        <h4>🎹 시퀀스 탭</h4>
+        <ul>
+          <li><b>에너지 그래프</b>: 16개 막대를 드래그하면 그 마디의 악기 등장과 강약이 바뀝니다. 아래 프리셋 버튼으로 한 번에 잡을 수도 있어요.</li>
+          <li><b>피아노 롤</b>: 2마디 또는 4마디 창을 옮겨 가며 탭으로 음을 넣고 뺍니다. 드래그하면 칠하듯 입력됩니다.</li>
+          <li><b>드럼 그리드</b>: 킥·스네어·하이햇·오픈햇을 16칸에서 직접 찍습니다. 4마디 끝에는 필인이 자동으로 들어갑니다.</li>
+          <li><b>코드 새로</b>: 같은 분위기에서 코드 진행만 다시 뽑습니다.</li>
+        </ul>
+      </div>
+      <div class="gcard">
+        <h4>🎤 허밍 탭</h4>
+        <ul>
+          <li><b>허밍 녹음</b>을 누르고 "라~라~" 하고 흥얼거린 뒤 다시 누르면 멜로디로 옮겨집니다.</li>
+          <li>마이크 권한이 없거나 조용하면 <span class="kbd">샘플 데모</span>로 전체 흐름을 그대로 체험할 수 있습니다.</li>
+          <li><b>음정 보정</b>은 선택한 키의 스케일에 맞춰 반음 단위로 붙여 주고, <b>편곡에 반영</b>을 누르면 16마디 멜로디가 그 가이드에서 다시 만들어집니다.</li>
+        </ul>
+      </div>
+      <div class="gcard">
+        <h4>🎚 믹스 탭</h4>
+        <ul>
+          <li>트랙마다 <b>M</b>(음소거)·<b>S</b>(솔로), 악기 교체, 볼륨·팬을 조절합니다.</li>
+          <li><b>샘플</b> 표시는 실제 악기 원음, <b>신스</b> 표시는 내장 합성음입니다. 샘플을 못 받으면 자동으로 신스로 연주합니다.</li>
+          <li>마스터링 랙: LOW/MID/HIGH EQ, REVERB, WARMTH, 리미터. 내보내기에도 똑같이 적용됩니다.</li>
+        </ul>
+      </div>
+      <div class="gcard">
+        <h4>⬇ 내보내기 탭</h4>
+        <ul>
+          <li><b>루프 길이</b>: 15·30·60초 또는 4/8/16마디. 초 단위를 고르면 마디에 딱 맞춰 길이를 계산하고, 필요하면 템포를 살짝 조정해 정확히 맞춥니다.</li>
+          <li>끝에서 잘리는 잔향은 <b>앞부분에 감아 넣어</b> 반복 재생 시 이음매가 들리지 않습니다.</li>
+          <li><b>MIDI</b>는 멜로디·코드·베이스·드럼 4트랙으로 저장되어 다른 작곡 앱에서도 열립니다.</li>
+        </ul>
+      </div>
+      <div class="gcard">
+        <h4>🔐 잠금·설치</h4>
+        <ul>
+          <li>처음 열면 가족 PIN <span class="kbd">0623</span>을 묻습니다. [이 기기에서 유지]를 켜면 다음부터 바로 열립니다.</li>
+          <li>상단 <span class="kbd">🔒</span>를 누르면 언제든 다시 잠깁니다.</li>
+          <li>폰 브라우저 메뉴 → <b>홈 화면에 추가</b>하면 주소창 없는 앱으로 설치됩니다.</li>
+        </ul>
+      </div>
+      <div class="gcard">
+        <h4>❓ 자주 묻는 것</h4>
+        <ul>
+          <li><b>소리가 안 나요</b> — 폰은 무음 모드를 풀고, 재생 버튼을 한 번 눌러 주세요. 첫 재생 때 악기 샘플(2~3MB)을 받느라 1~3초 걸립니다.</li>
+          <li><b>AI가 응답하지 않아요</b> — 무료 Gemini 한도를 다 쓴 경우입니다. 그때도 내장 엔진이 같은 무드로 곡을 만들어 줍니다.</li>
+          <li><b>노래(보컬)는 안 되나요</b> — 이 스튜디오는 연주·반주 특화입니다. 완성곡 보컬은 수노·유디오 같은 생성형 AI에 위 영문 프롬프트를 붙여 넣어 뽑으세요.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

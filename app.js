@@ -81,13 +81,13 @@ var PRESETS = [
 
 /* 코드 진행 (스케일 도수) — 8마디 */
 var PROGRESSIONS = {
-  citypop:   { label:'IV–V–iii–vi (시티팝)',  minor:[3,4,2,5],        major:[3,4,2,5] },
-  lofi:      { label:'i–VI–iv–V (로파이)',    minor:[0,5,3,4],        major:[0,5,3,4] },
-  cinematic: { label:'i–VI–III–VII (시네마틱)', minor:[0,5,2,6],     major:[0,5,3,4] },
-  synthwave: { label:'i–VII–VI–VII (신스웨이브)', minor:[0,6,5,6],   major:[0,6,5,6] },
-  pop:       { label:'I–V–vi–IV (팝)',        minor:[2,6,3,0],        major:[0,4,5,3] },
-  trap:      { label:'i–iv–VI–V (트랩)',      minor:[0,3,5,4],        major:[0,3,5,4] },
-  canon:     { label:'I–V–vi–iii–IV–I–IV–V',  minor:[0,4,5,2,3,0,3,4], major:[0,4,5,2,3,0,3,4] }
+  citypop:   { label:'시티팝 진행',  minor:[3,4,2,5],        major:[3,4,2,5] },
+  lofi:      { label:'로파이 진행',    minor:[0,5,3,4],        major:[0,5,3,4] },
+  cinematic: { label:'시네마틱 진행', minor:[0,5,2,6],     major:[0,5,3,4] },
+  synthwave: { label:'신스웨이브 진행', minor:[0,6,5,6],   major:[0,6,5,6] },
+  pop:       { label:'팝 진행',        minor:[2,6,3,0],        major:[0,4,5,3] },
+  trap:      { label:'트랩 진행',      minor:[0,3,5,4],        major:[0,3,5,4] },
+  canon:     { label:'캐논 진행',  minor:[0,4,5,2,3,0,3,4], major:[0,4,5,2,3,0,3,4] }
 };
 
 /* 드럼 패턴 (16분 16칸) */
@@ -776,8 +776,10 @@ function buildChords(seed){
   var degs = (S.mode === 'major' ? prog.major : prog.minor).slice();
   S.chords = [];
   for (var b = 0; b < S.bars; b++) {
-    var deg = degs[b % degs.length];
-    if (b >= 8 && S.bars >= 12 && chance(.35)) deg = degs[(b + 2) % degs.length];
+    /* 4마디 블록 단위로 진행을 유지하고, B 블록(9~12마디)만 한 칸 회전해 대비를 준다 */
+    var block = Math.floor(b / 4);
+    var rot = (block === 2 && S.bars >= 12) ? 1 : 0;
+    var deg = degs[(b + rot) % degs.length];
     var ext = S.ext;
     var notes = chordVoicing(deg, ext);
     S.chords.push({ deg: deg, ext: ext, notes: notes, name: chordName(deg, ext), root: notes[0] });
@@ -838,9 +840,11 @@ function genMelody(seed, fromHum){
       if (fromHum && b < 2 && S.hum[step] != null) {
         target = S.hum[step] + 12;
       } else if (step === 0) {
-        target = nearestChordTone(prev, ch.notes, 9);
+        target = nearestChordTone(prev, ch.notes, 12);
       } else if (step % 4 === 0) {
-        target = chance(.62) ? nearestChordTone(prev, ch.notes, 7) : nearestChordTone(prev, pool, 4);
+        target = chance(.62) ? nearestChordTone(prev, ch.notes, 9) : nearestChordTone(prev, pool, 5);
+      } else if (chance(.16)) {
+        target = prev;                       /* 같은 음 반복 — 리듬에 힘을 준다 */
       } else {
         var dir = chance(.5) ? 1 : -1;
         var idx = pool.indexOf(nearestChordTone(prev, pool, 5));

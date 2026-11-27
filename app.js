@@ -26,7 +26,7 @@ var INST = {
   ep:      { name:'일렉트릭 피아노', kind:'synth', synth:'fm', atk:0.004, dec:0.9, sus:0.22, rel:0.55, gain:0.55, tone:4200, bright:1.6, tag:'신스' },
   flute:   { name:'플루트', kind:'sample', base:INST_BASE+'flute/', notes:['C4','E5'], atk:0.06, rel:0.35, gain:0.75, tone:7000, tag:'샘플' },
   lead:    { name:'아날로그 리드', kind:'synth', synth:'saw', atk:0.02, dec:0.25, sus:0.45, rel:0.3, gain:0.42, tone:5200, bright:1.2, tag:'신스' },
-  strings: { name:'첼로 스트링', kind:'sample', base:INST_BASE+'cello/', notes:['C2','G3','D4','A4'], atk:0.16, rel:1.5, gain:0.62, tone:5200, tag:'샘플' },
+  strings: { name:'첼로 스트링', kind:'sample', base:INST_BASE+'cello/', notes:['C2','G3','D4','A4'], atk:0.16, rel:0.85, gain:0.62, tone:5200, tag:'샘플' },
   pad:     { name:'따뜻한 패드', kind:'synth', synth:'pad', atk:0.5, dec:0.8, sus:0.75, rel:1.6, gain:0.3, tone:3000, bright:0.9, tag:'신스' },
   organ:   { name:'오르간', kind:'sample', base:INST_BASE+'organ/', notes:['C2','Ds3','Fs4'], atk:0.012, rel:0.28, gain:0.6, tone:6500, tag:'샘플' },
   bassEl:  { name:'일렉트릭 베이스', kind:'sample', base:INST_BASE+'bass-electric/', notes:['E1','G2'], atk:0.004, rel:0.28, gain:0.95, tone:1100, tag:'샘플' },
@@ -945,7 +945,7 @@ function genDrums(seed){
       }
       if (p.kick[s] === '1' && (e > .28 || s === 0)) out.push({ bar:b, step:s, row:'kick', vel: clamp(.72 + e * .28, .3, 1) });
       if (p.snare[s] === '1' && e > .42) out.push({ bar:b, step:s, row:'snare', vel: clamp(.66 + e * .3, .3, 1) });
-      if (p.hat[s] === '1' && e > .22) out.push({ bar:b, step:s, row:'hat', vel: clamp(accent * (.34 + e * .34), .15, .95) });
+      if (p.hat[s] === '1' && e > .22) out.push({ bar:b, step:s, row:'hat', vel: clamp(accent * (.24 + e * .26), .12, .78) });
       if (p.ohat[s] === '1' && e > .5) out.push({ bar:b, step:s, row:'ohat', vel: clamp(.42 + e * .22, .2, .9) });
     }
     /* 고에너지 구간 16분 하이햇 롤 */
@@ -1107,9 +1107,10 @@ function refreshStats(){
     for (var b = 0; b < 16; b++) {
       var i2 = el('i');
       var v = barEnergy(b);
-      i2.style.opacity = String(0.25 + v * 0.75);
+      i2.style.opacity = String(0.32 + v * 0.68);
+      i2.style.height = Math.round(3 + v * 11) + 'px';
       i2.style.background = b < S.bars ? 'var(--cyan)' : 'var(--track)';
-      i2.title = 'BAR ' + (b + 1);
+      i2.title = 'BAR ' + (b + 1) + ' · ' + Math.round(v * 100) + '%';
       strip.appendChild(i2);
     }
   }

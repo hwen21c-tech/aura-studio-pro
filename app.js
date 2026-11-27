@@ -1127,7 +1127,8 @@ function planLoop(){
     var bars = Math.max(1, Math.round(L.value / barSec));
     if (S.exactSec === false) {
       /* 템포를 지키고 마디에 맞춘 근사 길이 — 미리 들은 그대로 저장된다 */
-      return { bars:bars, bpm:S.bpm, sec: bars * 4 * 60 / S.bpm, exact:false, adjusted:false };
+      var realSec = bars * 4 * 60 / S.bpm;
+      return { bars:bars, bpm:S.bpm, sec: realSec, exact: Math.abs(realSec - L.value) < 0.05, adjusted:false };
     }
     var bpmExact = bars * 4 * 60 / L.value;
     var diff = Math.abs(bpmExact - S.bpm) / S.bpm;
@@ -1146,7 +1147,7 @@ function refreshLoopInfo(){
   if (sec) sec.textContent = p.sec.toFixed(1) + '초';
   if (bars) bars.textContent = p.bars + '마디 · ' + (p.adjusted ? S.bpm + '→' + p.bpm : p.bpm) + ' BPM';
   if (seam) {
-    seam.textContent = p.exact ? '끊김 없음 (테일 감아넣기)' : '근사 (템포 유지)';
+    seam.textContent = p.exact ? '끊김 없음 (테일 감아넣기)' : '템포 유지 · 마디 근사';
     seam.style.color = p.exact ? 'var(--green)' : 'var(--amber)';
   }
   return p;
@@ -2017,7 +2018,7 @@ function bindControls(){
   Array.prototype.forEach.call(document.querySelectorAll('[data-loop]'), function(btn){
     btn.addEventListener('click', function(){
       var v = +btn.dataset.loop;
-      S.loop = v <= 60 ? { type:'sec', value:v } : { type:'bars', value:v };
+      S.loop = { type: btn.dataset.kind === 'bars' ? 'bars' : 'sec', value:v };
       Array.prototype.forEach.call(document.querySelectorAll('[data-loop]'), function(b2){ b2.classList.toggle('on', b2 === btn); });
       refreshLoopInfo(); saveSettings();
     });
@@ -2444,8 +2445,8 @@ function applyStateToUI(){
   });
   Array.prototype.forEach.call(document.querySelectorAll('[data-loop]'), function(b){
     var v = +b.dataset.loop;
-    var on = (v <= 60 && S.loop.type === 'sec' && S.loop.value === v) || (v > 60 && S.loop.type === 'bars' && S.loop.value === v);
-    b.classList.toggle('on', on);
+    var kind = b.dataset.kind === 'bars' ? 'bars' : 'sec';
+    b.classList.toggle('on', S.loop.type === kind && S.loop.value === v);
   });
   $('eq-low').value = S.master.low; $('val-eq-low').textContent = (S.master.low > 0 ? '+' : '') + (+S.master.low).toFixed(1) + 'dB';
   $('eq-mid').value = S.master.mid; $('val-eq-mid').textContent = (S.master.mid > 0 ? '+' : '') + (+S.master.mid).toFixed(1) + 'dB';

@@ -132,9 +132,9 @@ var S = {
   aiTitle: '', aiTip: '', aiModel: '', aiSource: '',
   rollBars: 2, rollStart: 0, drumBar: 0,
   loop: { type:'sec', value: 15 },
-  isPlaying: false, playing: false, step: 0, isLoop: true, normalize: true,
+  isPlaying: false, playing: false, step: 0, isLoop: true, normalize: true, exactSec: true,
   tracks: [
-    { id:'melody', role:'melody', name:'멜로디', inst:'ep',     vol:0.85, pan:-0.08, mute:false, solo:false },
+    { id:'melody', role:'melody', name:'멜로디', inst:'piano',  vol:0.85, pan:-0.08, mute:false, solo:false },
     { id:'chords', role:'chords', name:'코드',   inst:'strings',vol:0.62, pan: 0.12, mute:false, solo:false },
     { id:'bass',   role:'bass',   name:'베이스', inst:'bassEl', vol:0.80, pan: 0,    mute:false, solo:false },
     { id:'drums',  role:'drums',  name:'드럼',   inst:'kit-cr78',vol:0.85, pan: 0,   mute:false, solo:false },
@@ -231,7 +231,7 @@ function toast(msg, kind){
 /* ---------------------------------------------------------------- 3. 오디오 엔진 */
 var AU = {
   ctx: null, master: null, trackNodes: {}, buffers: {}, pending: {}, instCache: {},
-  noise: null, timer: null, step: 0, nextTime: 0, raf: null, started: false,
+  noise: null, timer: null, step: 0, nextTime: 0, raf: null, started: false, playing: false, endAt: null,
   loadTotal: 0, loadDone: 0, failed: {}, ready: false
 };
 
@@ -1121,6 +1121,10 @@ function planLoop(){
   var L = S.loop;
   if (L.type === 'sec') {
     var bars = Math.max(1, Math.round(L.value / barSec));
+    if (S.exactSec === false) {
+      /* 템포를 지키고 마디에 맞춘 근사 길이 — 미리 들은 그대로 저장된다 */
+      return { bars:bars, bpm:S.bpm, sec: bars * 4 * 60 / S.bpm, exact:false, adjusted:false };
+    }
     var bpmExact = bars * 4 * 60 / L.value;
     var diff = Math.abs(bpmExact - S.bpm) / S.bpm;
     if (diff <= 0.1 && bpmExact >= 60 && bpmExact <= 175) {
@@ -1274,7 +1278,7 @@ function exportWav(){
       downloadBlob(enc.blob, name);
       var secs = ((performance.now() - t0) / 1000).toFixed(1);
       setExportProgress(100, '완료 · ' + (enc.bytes / 1024 / 1024).toFixed(2) + 'MB · 피크 ' +
-        (20 * Math.log10(Math.max(enc.peak, 1e-6))).toFixed(1) + 'dBFS (' + secs + '초)');
+        (20 * Math.log10(Math.max(enc.peak * enc.gain, 1e-6))).toFixed(1) + 'dBFS (' + secs + '초)');
       toast('WAV 저장 완료 · ' + plan.sec.toFixed(1) + '초 ' + name, 'ok');
       setTimeout(function(){ setExportProgress(null); }, 4000);
     })
@@ -2015,6 +2019,8 @@ function bindControls(){
     });
   });
   $('chk-normalize').addEventListener('change', function(e){ S.normalize = e.target.checked; saveSettings(); });
+  var ex = $('chk-exactsec');
+  if (ex) ex.addEventListener('change', function(){ S.exactSec = ex.checked; refreshLoopInfo(); saveSettings(); });
   $('btn-export-wav').addEventListener('click', exportWav);
   $('btn-export-midi').addEventListener('click', exportMidi);
   $('btn-save-proj').addEventListener('click', saveProject);
@@ -2154,6 +2160,8 @@ function applyAI(d){
   S.aiSource = 'ai';
   rebuildEvents();
   syncPresetUI(); renderMixer(); refreshStats(); refreshLoopInfo(); drawAll();
+  /* AI가 고른 악기(드럼 킷 등)를 새로 받아 둔다 — 안 받으면 신스 폴백으로 들린다 */
+  if (AU.ctx) loadNeeded(null).then(function(){ updateSamplerStatus(); }).catch(function(){});
   return true;
 }
 
@@ -2383,7 +2391,7 @@ function saveSettings(){
       theme: isLight() ? 'light' : 'dark',
       bpm:S.bpm, key:S.key, mode:S.mode, preset:S.preset, prog:S.prog, ext:S.ext,
       bright:S.bright, energy:S.energy, swing:S.swing, humanize:S.humanize, fill:S.fill,
-      master:S.master, loop:S.loop,
+      master:S.master, loop:S.loop, exactSec:S.exactSec,
       tracks:S.tracks.map(function(t){ return { id:t.id, inst:t.inst, vol:t.vol, pan:t.pan, mute:t.mute, solo:t.solo }; })
     }));
   } catch (e) {}
@@ -2408,6 +2416,7 @@ function loadSettings(){
     if (s.fill != null) S.fill = !!s.fill;
     if (s.master) S.master = Object.assign(S.master, s.master);
     if (s.loop) S.loop = s.loop;
+    if (s.exactSec != null) S.exactSec = !!s.exactSec;
     if (s.tracks) s.tracks.forEach(function(t){
       var cur = S.tracks.filter(function(x){ return x.id === t.id; })[0];
       if (cur) { cur.inst = t.inst || cur.inst; cur.vol = t.vol != null ? t.vol : cur.vol; cur.pan = t.pan != null ? t.pan : cur.pan; cur.mute = !!t.mute; cur.solo = !!t.solo; }
@@ -2423,6 +2432,7 @@ function applyStateToUI(){
   $('chk-humanize').checked = !!S.humanize;
   $('chk-fill').checked = !!S.fill;
   $('chk-normalize').checked = S.normalize !== false;
+  if ($('chk-exactsec')) $('chk-exactsec').checked = S.exactSec !== false;
   $('key-select').value = String(S.key);
   $('mode-select').value = S.mode;
   Array.prototype.forEach.call(document.querySelectorAll('[data-bars]'), function(b){

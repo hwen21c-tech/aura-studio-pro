@@ -41,6 +41,11 @@ function ivAt(iv, deg){
   return iv[i] + 12 * oct;
 }
 
+/* 박자 — 왈츠(3/4)는 한 마디 12칸, 나머지는 16칸(4/4). 모든 생성·재생·내보내기가 이 값을 쓴다 */
+function beatsPerBar(){ return S && S.meter === 3 ? 3 : 4; }
+function barLen(){ return beatsPerBar() * 4; }
+function barSecAt(bpm){ return beatsPerBar() * 60 / (bpm || (S && S.bpm) || 100); }
+
 var SAMPLE_BASE = 'https://tonejs.github.io/audio/salamander/';
 var DRUM_BASE   = 'https://tonejs.github.io/audio/drum-samples/';
 var INST_BASE   = 'https://cdn.jsdelivr.net/gh/nbrosowsky/tonejs-instruments/samples/';
@@ -50,7 +55,12 @@ var INST = {
   piano:   { name:'그랜드 피아노', kind:'sample', base:SAMPLE_BASE, notes:['C2','Ds3','Fs3','A4','C5','Ds6'], atk:0.002, rel:0.85, gain:0.92, tone:9000, tag:'샘플' },
   ep:      { name:'일렉트릭 피아노', kind:'synth', synth:'fm', atk:0.004, dec:0.9, sus:0.22, rel:0.55, gain:0.55, tone:4200, bright:1.6, tag:'신스' },
   flute:   { name:'플루트', kind:'sample', base:INST_BASE+'flute/', notes:['C4','E5'], atk:0.06, rel:0.35, gain:0.75, tone:7000, tag:'샘플' },
-  lead:    { name:'아날로그 리드', kind:'synth', synth:'saw', atk:0.02, dec:0.25, sus:0.45, rel:0.3, gain:0.42, tone:5200, bright:1.2, tag:'신스' },
+  lead:    { name:'리드 신스', kind:'synth', synth:'saw', atk:0.02, dec:0.25, sus:0.45, rel:0.3, gain:0.42, tone:5200, bright:1.2, tag:'신스' },
+  /* 리드 음색 6종 — 피아노(샘플) · 플럭 · 브라스 · 리드 신스 · 8비트 칩튠 · 감성 벨 */
+  pluck:   { name:'플럭 신스', kind:'synth', synth:'pluck', atk:0.002, dec:0.26, sus:0.03, rel:0.22, gain:0.50, tone:8200, bright:1.7, lead:true, tag:'신스' },
+  brass:   { name:'브라스 섹션', kind:'synth', synth:'brass', atk:0.05, dec:0.26, sus:0.70, rel:0.26, gain:0.40, tone:5600, bright:1.05, peak:1100, peakQ:2.1, peakGain:7, lead:true, tag:'신스' },
+  chip:    { name:'8비트 칩튠', kind:'synth', synth:'chip', atk:0.001, dec:0.09, sus:0.12, rel:0.06, gain:0.30, tone:13000, bright:1.9, lead:true, tag:'신스' },
+  bell:    { name:'감성 벨', kind:'synth', synth:'bell', atk:0.002, dec:1.45, sus:0.05, rel:1.05, gain:0.34, tone:11000, bright:1.4, lead:true, tag:'신스' },
   strings: { name:'첼로 스트링', kind:'sample', base:INST_BASE+'cello/', notes:['C2','G3','D4','A4'], atk:0.16, rel:0.85, gain:0.62, tone:5200, tag:'샘플' },
   pad:     { name:'따뜻한 패드', kind:'synth', synth:'pad', atk:0.5, dec:0.8, sus:0.75, rel:1.6, gain:0.3, tone:3000, bright:0.9, tag:'신스' },
   organ:   { name:'오르간', kind:'sample', base:INST_BASE+'organ/', notes:['C2','Ds3','Fs4'], atk:0.012, rel:0.28, gain:0.6, tone:6500, tag:'샘플' },
@@ -69,7 +79,12 @@ var INST = {
   'kit-kpr77':    { name:'로파이 (KPR-77)', kind:'drums', folder:'KPR77', gain:1.0, tag:'샘플' },
   'kit-linn':     { name:'80s (LINN)', kind:'drums', folder:'LINN', gain:1.0, tag:'샘플' },
   'kit-r8':       { name:'힙합 (R-8)', kind:'drums', folder:'R8', gain:1.0, tag:'샘플' },
-  'kit-stark':    { name:'소프트 (Stark)', kind:'drums', folder:'Stark', gain:1.0, tag:'샘플' }
+  'kit-stark':    { name:'소프트 (Stark)', kind:'drums', folder:'Stark', gain:1.0, tag:'샘플' },
+  /* 드럼 킷 4종 — 샘플 없이 킷별 신스 파라미터(피치·엔벨로프·필터·클릭)로 만든다 */
+  'kit-808':      { name:'808 힙합', kind:'drumkit', kit:'hiphop808', gain:0.95, tone:12000, tag:'신스' },
+  'kit-lofi':     { name:'로파이 빈티지', kind:'drumkit', kit:'lofi', gain:0.92, tone:5200, tag:'신스' },
+  'kit-rock':     { name:'어쿠스틱 록', kind:'drumkit', kit:'rock', gain:1.0, tone:11000, tag:'신스' },
+  'kit-electro':  { name:'일렉트로', kind:'drumkit', kit:'electro', gain:0.98, tone:13000, tag:'신스' }
 };
 
 var DRUM_FILES = { kick:'kick.mp3', snare:'snare.mp3', hat:'hihat.mp3', tom1:'tom1.mp3', tom2:'tom2.mp3', tom3:'tom3.mp3' };
@@ -79,6 +94,77 @@ var DRUM_ROWS = [
   { id:'hat',   label:'하이햇', note:'F#1' },
   { id:'ohat',  label:'오픈햇', note:'G#1' }
 ];
+
+/* ---------------------------------------------------------------- 리듬 패턴 8종
+   드럼 16칸(A/B)만 바뀌는 게 아니라 베이스 리듬·코드 컴핑·아르페지오·스윙·박자까지 함께 바뀐다.
+   bass: [칸, root|fifth|oct] · comp: [칸, 길이(칸)] · arpPat: 아르페지오 칸 */
+var RHYTHMS = [
+  { id:'pop', em:'🎈', name:'정박 팝', sub:'1·3 킥 / 2·4 스네어', meter:4, swing:0, bassDur:2,
+    pat:{
+      A:{ kick:'1000000010000000', snare:'0000100000001000', hat:'1010101010101010', ohat:'0000000000000000' },
+      B:{ kick:'1000000010010000', snare:'0000100000001000', hat:'1010101110101110', ohat:'0000000000001000' }
+    },
+    bass:[[0,'root'],[6,'fifth'],[8,'root'],[12,'oct']],
+    comp:[[0,16]], arpPat:[0,4,8,12] },
+
+  { id:'boombap', em:'🥊', name:'힙합 붐뱁', sub:'스윙 8분 · 킥 엇박', meter:4, swing:22, bassDur:2,
+    pat:{
+      A:{ kick:'1000000000100100', snare:'0000100000001000', hat:'1010101010101010', ohat:'0000000000000010' },
+      B:{ kick:'1000001000100100', snare:'0000100000001010', hat:'1010101110101011', ohat:'0000000000000100' }
+    },
+    bass:[[0,'root'],[7,'root'],[10,'fifth'],[14,'oct']],
+    comp:[[0,7],[10,6]], arpPat:[0,3,6,10,12] },
+
+  { id:'trap16', em:'🔥', name:'트랩 16비트', sub:'808 킥 · 롤 하이햇', meter:4, swing:0, bassDur:3, rollHat:true,
+    pat:{
+      A:{ kick:'1000001000100000', snare:'0000000010000000', hat:'1011101110111011', ohat:'0000000000000000' },
+      B:{ kick:'1000001000100010', snare:'0000000010000000', hat:'1110111011101111', ohat:'0000000000000100' }
+    },
+    bass:[[0,'root'],[6,'root'],[10,'oct'],[14,'fifth']],
+    comp:[[0,14]], arpPat:[0,2,4,6,8,10,12,14] },
+
+  { id:'fourfloor', em:'🏠', name:'4온더플로어', sub:'하우스 · 오프비트 햇', meter:4, swing:0, bassDur:2,
+    pat:{
+      A:{ kick:'1000100010001000', snare:'0000100000001000', hat:'0000000000000000', ohat:'0010001000100010' },
+      B:{ kick:'1000100010001000', snare:'0000100000001000', hat:'1010101010101010', ohat:'0010001000100010' }
+    },
+    bass:[[0,'root'],[2,'oct'],[4,'root'],[6,'oct'],[8,'root'],[10,'oct'],[12,'root'],[14,'oct']],
+    comp:[[2,1],[6,1],[10,1],[14,1]], arpPat:[2,6,10,14] },
+
+  { id:'citypop', em:'🌃', name:'시티팝 스윙', sub:'게이트 드럼 · 스윙', meter:4, swing:26, bassDur:2,
+    pat:{
+      A:{ kick:'1000000010000010', snare:'0000100000001000', hat:'1010101010101010', ohat:'0000000010000000' },
+      B:{ kick:'1000000010010010', snare:'0000100000001010', hat:'1011101110111011', ohat:'0000000010001000' }
+    },
+    bass:[[0,'root'],[3,'oct'],[6,'fifth'],[8,'root'],[11,'oct'],[14,'fifth']],
+    comp:[[0,8],[8,8]], arpPat:[0,3,6,10,12,14] },
+
+  { id:'bossa', em:'☕', name:'보사노바', sub:'림샷 · 가벼운 라틴', meter:4, swing:14, bassDur:2,
+    pat:{
+      A:{ kick:'1000000010000000', snare:'0001000100010001', hat:'1010101010101010', ohat:'0000000000000000' },
+      B:{ kick:'1000000010000010', snare:'0001000100010001', hat:'1010101010101110', ohat:'0000000000001000' }
+    },
+    bass:[[0,'root'],[3,'fifth'],[6,'oct'],[10,'root'],[13,'fifth']],
+    comp:[[0,3],[4,3],[8,3],[12,4]], arpPat:[0,3,6,10,12] },
+
+  { id:'waltz', em:'💃', name:'왈츠 3/4', sub:'3박자 · 1박 킥', meter:3, swing:0, bassDur:3,
+    pat:{
+      A:{ kick:'100000000000', snare:'000010001000', hat:'101010101010', ohat:'000000000000' },
+      B:{ kick:'100000000000', snare:'000010001000', hat:'101010101011', ohat:'000000001000' }
+    },
+    bass:[[0,'root'],[4,'fifth'],[8,'oct']],
+    comp:[[0,4],[4,8]], arpPat:[0,3,6,9] },
+
+  { id:'tension', em:'🚨', name:'긴장감 스타카토', sub:'타이트한 16분 · 짧은 스탭', meter:4, swing:0, bassDur:1, rollHat:true,
+    pat:{
+      A:{ kick:'1000000010000000', snare:'0000010000000100', hat:'1111111111111111', ohat:'0000000000000000' },
+      B:{ kick:'1000000010000010', snare:'0000010000000100', hat:'1111111111111111', ohat:'0000000000000100' }
+    },
+    bass:[[0,'root'],[3,'root'],[6,'root'],[10,'root'],[12,'fifth']],
+    comp:[[0,1],[2,1],[4,1],[6,1],[8,1],[10,1],[12,1],[14,1]], arpPat:[0,2,4,6,8,10,12,14] }
+];
+function rhythmOf(id){ for (var i = 0; i < RHYTHMS.length; i++) if (RHYTHMS[i].id === id) return RHYTHMS[i]; return null; }
+function rhythmNow(){ return rhythmOf(S.rhythm); }
 
 /* 프리셋 — 장르 한 방 세팅 */
 var PRESETS = [
@@ -158,6 +244,14 @@ var PRESET_SCALE = {
   techhouse:'minor', neosoul:'dorian'
 };
 function presetScale(p){ return (p && (p.scale || PRESET_SCALE[p.id])) || (p && p.mode) || 'minor'; }
+
+/* 프리셋 ↔ 리듬 패턴 자동 연동 — 프리셋을 고르면 어울리는 리듬 칩이 함께 선택된다 */
+var PRESET_RHYTHM = {
+  citypop:'citypop', lofi:'boombap', cinematic:'pop', synthwave:'fourfloor', acoustic:'pop', hiphop:'trap16',
+  news:'pop', breaking:'tension', bossa:'bossa', kpop:'pop', ballad:'pop', funk:'boombap',
+  chiptune:'pop', ambient:'pop', techhouse:'fourfloor', neosoul:'boombap'
+};
+function presetRhythm(p){ return (p && p.rhythm) || PRESET_RHYTHM[p && p.id] || 'pop'; }
 
 /* 코드 진행 (스케일 도수) — 8마디 */
 var PROGRESSIONS = {
@@ -278,13 +372,16 @@ var S = {
     { id:'vocal',  role:'vocal',  name:'보컬',   inst:'vox-ooh', vol:0.34, pan: 0.04, mute:false, solo:false, locked:false }
   ],
   trackOpts: {
-    melody: ['piano','ep','flute','lead'],
+    melody: ['piano','pluck','brass','lead','chip','bell','ep','flute'],
     chords: ['strings','pad','organ','ep'],
     bass:   ['bassEl','bassSyn'],
-    drums:  ['kit-cr78','kit-acoustic','kit-kpr77','kit-linn','kit-r8','kit-stark'],
-    arp:    ['guitar','harp','xylo','piano'],
+    drums:  ['kit-cr78','kit-acoustic','kit-kpr77','kit-linn','kit-r8','kit-stark','kit-808','kit-lofi','kit-rock','kit-electro'],
+    arp:    ['guitar','harp','xylo','pluck','bell','piano'],
     vocal:  ['vox-ooh','vox-aah','vox-chops']
   },
+
+  /* v10 — 작곡 다양성: 리듬 패턴 8종 · 드럼 킷 4종 · 리드 음색 6종 */
+  rhythm: 'pop', rhythmAuto: true, meter: 4,
   master: { low:1, mid:0, high:2, reverb:28, warmth:18, volume:80, limiter:true, tone:16000 },
 
   /* v1~v8 — 감정 패드 · 코드 롤링 · 사이드체인 · A/B */
@@ -555,6 +652,7 @@ function fetchBuffer(ctx, url){
 
 function instUrls(id){
   var d = INST[id]; if (!d) return [];
+  if (d.kind === 'drumkit') return [];
   if (d.kind === 'sample') return d.notes.map(function(n){ return d.base + n.replace('#','s') + '.mp3'; });
   if (d.kind === 'drums') return Object.keys(DRUM_FILES).map(function(k){ return DRUM_BASE + d.folder + '/' + DRUM_FILES[k]; });
   return [];
@@ -565,7 +663,7 @@ function prepareInst(id){
   if (!d) return Promise.resolve(null);
   if (AU.instCache[id]) return AU.instCache[id].promise;
   var ctx = AU.ctx;
-  if (d.kind === 'synth' || !ctx) {
+  if (d.kind === 'synth' || d.kind === 'drumkit' || !ctx) {
     var prepared = { id: id, type: 'synth', def: d, samples: null, ready: true };
     AU.instCache[id] = { promise: Promise.resolve(prepared), inst: prepared };
     return Promise.resolve(prepared);
@@ -696,6 +794,146 @@ function synthDrum(ctx, out, row, when, vel){
   src.start(when); src.stop(when + 0.32);
 }
 
+/* ---------------------------------------------------------------- 드럼 킷 4종 (신스)
+   킷마다 피치 하강·감쇠·클릭·드라이브·필터·금속도가 다르다.
+   샘플을 받지 않으므로 오프라인 WAV 렌더에도 완전히 같은 소리가 난다. */
+var DRUM_KITS = {
+  hiphop808: {
+    kick:  { f0:160, f1:32, pd:0.16, dec:1.10, click:0.10, drive:2.4 },
+    snare: { band:1800, q:0.9, dec:0.19, noise:0.70, body:0.34, bodyF:180, bodyDec:0.11 },
+    hat:   { hp:9400, dec:0.030, metal:0.55 },
+    ohat:  { hp:7200, dec:0.28, metal:0.45 }
+  },
+  lofi: {
+    kick:  { f0:105, f1:44, pd:0.08, dec:0.34, click:0.04, drive:1.2, lp:1500 },
+    snare: { band:1350, q:1.6, dec:0.16, noise:0.55, body:0.28, bodyF:170, bodyDec:0.10, lp:4200 },
+    hat:   { hp:6200, dec:0.048, metal:0.12, lp:7000, crackle:0.05 },
+    ohat:  { hp:5200, dec:0.19, metal:0.08, lp:6500, crackle:0.04 }
+  },
+  rock: {
+    kick:  { f0:130, f1:52, pd:0.06, dec:0.30, click:0.34 },
+    snare: { band:2300, q:0.8, dec:0.17, noise:0.80, body:0.52, bodyF:195, bodyDec:0.13, bodyType:'triangle' },
+    hat:   { hp:7000, dec:0.055, metal:0.20 },
+    ohat:  { hp:6200, dec:0.34, metal:0.14 }
+  },
+  electro: {
+    kick:  { f0:190, f1:48, pd:0.045, dec:0.24, click:0.62, drive:3.0 },
+    snare: { band:1200, q:1.2, dec:0.26, noise:0.72, clap:3 },
+    hat:   { hp:10500, dec:0.028, metal:0.60 },
+    ohat:  { hp:8800, dec:0.16, metal:0.50 }
+  }
+};
+
+function kitDist(ctx, drive){
+  var ws = ctx.createWaveShaper(); ws.curve = makeCurve(drive * 22); ws.oversample = '2x';
+  return ws;
+}
+function kitNoise(ctx, out, when, dur, level, type, freq, q){
+  if (!level) return;
+  var src = ctx.createBufferSource(); src.buffer = noiseBuffer(ctx);
+  var f = ctx.createBiquadFilter(); f.type = type || 'bandpass'; f.frequency.value = freq || 1800; f.Q.value = q || 1;
+  var g = ctx.createGain();
+  g.gain.setValueAtTime(Math.max(0.0001, level), when);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + Math.max(0.01, dur));
+  src.connect(f); f.connect(g); g.connect(out);
+  src.start(when); src.stop(when + dur + 0.04);
+}
+
+function kitKick(ctx, out, k, when, vel){
+  var v = clamp(vel, 0.05, 1);
+  var o = ctx.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(k.f0, when);
+  o.frequency.exponentialRampToValueAtTime(Math.max(20, k.f1), when + k.pd);
+  var g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.linearRampToValueAtTime(v * 0.95, when + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + k.dec);
+  var tail = g;
+  if (k.drive) { var ws = kitDist(ctx, k.drive); tail.connect(ws); tail = ws; }
+  if (k.lp) { var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = k.lp; tail.connect(lp); tail = lp; }
+  o.connect(g); tail.connect(out);
+  o.start(when); o.stop(when + k.dec + 0.05);
+  if (k.click) kitNoise(ctx, out, when, 0.022, v * k.click * 0.45, 'bandpass', 2600, 0.8);
+}
+
+function kitSnare(ctx, out, s, when, vel){
+  var v = clamp(vel, 0.05, 1);
+  var bursts = s.clap ? s.clap : 1, rep = s.clap ? 0.011 : 0;
+  for (var b = 0; b < bursts; b++){
+    var t = when + b * rep;
+    var src = ctx.createBufferSource(); src.buffer = noiseBuffer(ctx);
+    var bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = s.band; bp.Q.value = s.q || 1;
+    var g = ctx.createGain();
+    var lv = v * (s.noise || 0.6) * (b === 0 ? 1 : 0.62);
+    g.gain.setValueAtTime(Math.max(0.0001, lv), t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.02, s.dec * (b === 0 ? 1 : 0.55)));
+    var tail = g;
+    if (s.lp) { var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = s.lp; tail.connect(lp); tail = lp; }
+    src.connect(bp); bp.connect(g); tail.connect(out);
+    src.start(t); src.stop(t + s.dec + 0.05);
+  }
+  if (s.body){
+    var o = ctx.createOscillator(); o.type = s.bodyType || 'triangle';
+    o.frequency.setValueAtTime(s.bodyF, when);
+    o.frequency.exponentialRampToValueAtTime(Math.max(60, s.bodyF * 0.7), when + s.bodyDec);
+    var og = ctx.createGain();
+    og.gain.setValueAtTime(v * s.body, when);
+    og.gain.exponentialRampToValueAtTime(0.0001, when + s.bodyDec);
+    o.connect(og); og.connect(out);
+    o.start(when); o.stop(when + s.bodyDec + 0.03);
+  }
+}
+
+function kitHat(ctx, out, h, when, vel, open){
+  var v = clamp(vel, 0.03, 1);
+  var src = ctx.createBufferSource(); src.buffer = noiseBuffer(ctx);
+  var hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = h.hp; hp.Q.value = 0.7;
+  var g = ctx.createGain();
+  g.gain.setValueAtTime(Math.max(0.0001, v * (open ? 0.34 : 0.30)), when);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + h.dec);
+  var tail = g;
+  if (h.lp) { var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = h.lp; tail.connect(lp); tail = lp; }
+  src.connect(hp); hp.connect(g); tail.connect(out);
+  src.start(when); src.stop(when + h.dec + 0.03);
+  if (h.metal){
+    [1.41, 1.73, 2.11, 2.53, 2.97].forEach(function(r){
+      var o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 3200 * r;
+      var og = ctx.createGain(); og.gain.value = v * h.metal * 0.030;
+      o.connect(og); og.connect(g); o.start(when); o.stop(when + h.dec + 0.03);
+    });
+  }
+  /* 로파이 비닐 질감 — 아주 짧은 먼지 소리 */
+  if (h.crackle) kitNoise(ctx, out, when, 0.055, v * h.crackle, 'lowpass', 3200, 0.7);
+}
+
+function synthDrumKit(ctx, out, def, row, when, vel){
+  var kit = DRUM_KITS[def.kit];
+  if (!kit) return false;
+  var g = def.gain || 1;
+  var v = clamp(vel, 0.05, 1) * g;
+  if (row === 'kick') { kitKick(ctx, out, kit.kick, when, v); return true; }
+  if (row === 'snare') { kitSnare(ctx, out, kit.snare, when, v); return true; }
+  if (row === 'hat') { kitHat(ctx, out, kit.hat, when, v, false); return true; }
+  if (row === 'ohat') { kitHat(ctx, out, kit.ohat, when, v, true); return true; }
+  /* tom 행이 생기면 킥 파라미터를 피치만 올려 쓴다 */
+  kitKick(ctx, out, { f0:kit.kick.f0 * 1.6, f1:kit.kick.f1 * 1.9, pd:kit.kick.pd, dec:kit.kick.dec * 0.5, click:0.05 }, when, v);
+  return true;
+}
+
+/* ---------------------------------------------------------------- 키트 미리듣기 */
+function previewKit(id){
+  if (!AU.ctx) return;
+  var def = INST[id]; if (!def) return;
+  var t = AU.ctx.currentTime + 0.02, sd = stepDur();
+  var out = AU.musicBus || AU.master.in;
+  try {
+    synthDrumKit(AU.ctx, out, def, 'kick', t, 0.92);
+    synthDrumKit(AU.ctx, out, def, 'hat', t + sd * 2, 0.55);
+    synthDrumKit(AU.ctx, out, def, 'snare', t + sd * 4, 0.85);
+    synthDrumKit(AU.ctx, out, def, 'ohat', t + sd * 6, 0.5);
+  } catch (e) {}
+}
+
 function synthVoice(ctx, out, def, midi, when, durSec, vel){
   var f0 = 440 * Math.pow(2, (midi - 69) / 12);
   var v = Math.max(0.03, Math.min(1, vel));
@@ -704,9 +942,9 @@ function synthVoice(ctx, out, def, midi, when, durSec, vel){
   var filt = ctx.createBiquadFilter();
   filt.type = 'lowpass'; filt.Q.value = 1.1;
   var bri = def.bright || 1;
-  var openF = Math.min(14000, 600 + v * 3200 * bri);
+  var openF = def.synth === 'chip' ? 15000 : Math.min(14000, 600 + v * 3200 * bri);
   filt.frequency.setValueAtTime(openF, when);
-  filt.frequency.exponentialRampToValueAtTime(Math.max(280, openF * 0.32), when + Math.max(0.08, durSec * 0.8));
+  if (def.synth !== 'chip') filt.frequency.exponentialRampToValueAtTime(Math.max(280, openF * 0.32), when + Math.max(0.08, durSec * 0.8));
   var peak = v * (def.gain || 0.5);
   var holdEnd = Math.max(when + atk + dec, when + durSec);
   g.gain.setValueAtTime(0.0001, when);
@@ -720,6 +958,12 @@ function synthVoice(ctx, out, def, midi, when, durSec, vel){
     var fmf = ctx.createBiquadFilter();
     fmf.type = 'peaking'; fmf.frequency.value = def.formant; fmf.Q.value = 1.6; fmf.gain.value = 9;
     filt.connect(fmf); tail = fmf;
+  }
+  /* 브라스·벨 같은 음색용 포먼트 강조 한 단 */
+  if (def.peak) {
+    var pkf = ctx.createBiquadFilter();
+    pkf.type = 'peaking'; pkf.frequency.value = def.peak; pkf.Q.value = def.peakQ || 1.8; pkf.gain.value = def.peakGain || 6;
+    tail.connect(pkf); tail = pkf;
   }
   tail.connect(g); g.connect(out);
 
@@ -757,6 +1001,37 @@ function synthVoice(ctx, out, def, midi, when, durSec, vel){
     osc('sawtooth', -6, 0.30); osc('sawtooth', 6, 0.30); osc('triangle', 0, 0.26);
   } else if (def.synth === 'chops') {
     osc('sawtooth', 0, 0.5); osc('square', 9, 0.16);
+  } else if (def.synth === 'brass') {
+    /* 브라스 섹션 — 살짝 붙었다가 열리는 톱니 스택 + 비브라토 */
+    osc('sawtooth', -6, 0.30); osc('sawtooth', 5, 0.30); osc('square', 0, 0.13);
+    var vib = ctx.createOscillator(); vib.type = 'sine'; vib.frequency.value = 5.2;
+    var vibG = ctx.createGain(); vibG.gain.setValueAtTime(0, when);
+    vibG.gain.linearRampToValueAtTime(6, when + Math.min(0.45, Math.max(0.12, durSec * 0.5)));
+    vib.connect(vibG);
+    oscs.forEach(function(o){ try { vibG.connect(o.detune); } catch (e) {} });
+    vib.start(when);
+    try { vib.stop(holdEnd + rel + 0.05); } catch (e) {}
+  } else if (def.synth === 'chip') {
+    /* 8비트 칩튠 — 펄스 느낌의 사각파 두 장, 필터를 거의 닫지 않는다 */
+    osc('square', 0, 0.40); osc('square', 11, 0.15);
+    oscs.forEach(function(o){
+      try {
+        o.frequency.setValueAtTime(f0 * 1.06, when);
+        o.frequency.exponentialRampToValueAtTime(f0, when + 0.035);
+      } catch (e) {}
+    });
+  } else if (def.synth === 'bell') {
+    /* 감성 벨 — 비화성 비율(3.51) FM + 2배음 반짝임, 긴 여운 */
+    var bcar = ctx.createOscillator(); bcar.type = 'sine'; bcar.frequency.value = f0;
+    var bmod = ctx.createOscillator(); bmod.type = 'sine'; bmod.frequency.value = f0 * 3.51;
+    var bmg = ctx.createGain();
+    bmg.gain.setValueAtTime(f0 * 2.1, when);
+    bmg.gain.exponentialRampToValueAtTime(Math.max(1, f0 * 0.04), when + Math.max(0.5, durSec * 1.4));
+    bmod.connect(bmg); bmg.connect(bcar.frequency);
+    var bog = ctx.createGain(); bog.gain.value = 0.85;
+    bcar.connect(bog); bog.connect(filt); oscs.push(bcar, bmod);
+    var b2 = ctx.createOscillator(); b2.type = 'sine'; b2.frequency.value = f0 * 2.01;
+    var b2g = ctx.createGain(); b2g.gain.value = 0.22; b2.connect(b2g); b2g.connect(filt); oscs.push(b2);
   } else if (def.synth === 'sub') {
     osc('sine', 0, 0.9); osc('triangle', 0, 0.22);
   } else {
@@ -774,7 +1049,9 @@ function fireEvent(ctx, out, track, ev, when, stepDur){
   var inst = loadedInst(track.inst);
   var def = INST[track.inst];
   if (!def) return;
-  if (def.kind === 'drums') {
+  if (def.kind === 'drums' || def.kind === 'drumkit') {
+    /* 킷 4종은 샘플 없이 킷별 신스 파라미터로 — 오프라인 렌더에도 같은 소리 */
+    if (def.kind === 'drumkit') { synthDrumKit(ctx, out, def, ev.row, when, ev.vel); return; }
     var ok = inst ? drumVoice(ctx, out, inst, ev.row, when, ev.vel) : false;
     if (!ok) synthDrum(ctx, out, ev.row, when, ev.vel);
     return;
@@ -793,14 +1070,14 @@ function fireEvent(ctx, out, track, ev, when, stepDur){
 /* ---------------- 재생 스케줄러 ---------------- */
 var LOOKAHEAD = 0.18, TICK_MS = 25;
 
-function totalSteps(){ return S.bars * 16; }
+function totalSteps(){ return S.bars * barLen(); }
 function stepDur(){ return (60 / S.bpm) / 4; }
 
 function scheduleStep(step, when, stepDurS){
   /* 구간 전환 라이저 — 섹션이 바뀌기 전 마지막 마디에서 다음 파트로올라가는 스웰 */
-  if (S.riser && step % 16 === 0){
-    var rb = Math.floor(step / 16);
-    if (riserBars().indexOf(rb) > -1) riserFx(AU.ctx, AU.musicBus || AU.master.in, when, 16 * stepDurS);
+  if (S.riser && step % barLen() === 0){
+    var rb = Math.floor(step / barLen());
+    if (riserBars().indexOf(rb) > -1) riserFx(AU.ctx, AU.musicBus || AU.master.in, when, barLen() * stepDurS);
   }
   var evs = S.events[step];
   if (!evs || !evs.length) return;
@@ -828,7 +1105,7 @@ function schedTick(){
     var delay = Math.max(0, (AU.nextTime - ctx.currentTime) * 1000);
     setTimeout(function(){
       if (!AU.playing) return;
-      var bar = Math.floor(st / 16) + 1, beat = Math.floor((st % 16) / 4) + 1;
+      var bar = Math.floor(st / barLen()) + 1, beat = Math.floor((st % barLen()) / 4) + 1;
       var el2 = $('bar-display'); if (el2) el2.textContent = pad2(bar) + '.' + beat;
       S.step = st;
       if (document.querySelector('#tab-seq:not(.hidden)')) drawEnergy();
@@ -901,7 +1178,7 @@ function updateSamplerStatus(){
   var live = 0, synth = 0, total = insts.length;
   insts.forEach(function(id){
     var c = AU.instCache[id];
-    if (INST[id] && INST[id].kind === 'synth') synth++;
+    if (INST[id] && (INST[id].kind === 'synth' || INST[id].kind === 'drumkit')) synth++;
     else if (c && c.inst && c.inst.ready) live++;
     else if (AU.failed[id]) synth++;
   });
@@ -1076,6 +1353,7 @@ function genMelody(seed, fromHum){
     var line = [];
     for (var k = 0; k < rhythm.length; k++) {
       var step = rhythm[k];
+      if (step >= barLen()) continue;
       if (intro && step > 8) continue;
       if (outro && step > 6) continue;
       if (step !== 0 && chance(intro ? .5 : outro ? .35 : (1 - e) * .28)) continue;
@@ -1099,8 +1377,8 @@ function genMelody(seed, fromHum){
       target = clamp(target, 60, HI);
       if (Math.abs(target - prev) > 12) target = prev + (target > prev ? 7 : -7);
 
-      var nextStep = k + 1 < rhythm.length ? rhythm[k + 1] : 16;
-      var dur = Math.max(1, Math.min(8, nextStep - step));
+      var nextStep = k + 1 < rhythm.length ? rhythm[k + 1] : barLen();
+      var dur = Math.max(1, Math.min(barLen(), nextStep - step));
       var vel = (intro ? .5 : outro ? .55 : .72) + (step % 4 === 0 ? .12 : 0) + e * .16;
       out.push({ bar:b, step:step, midi:target, dur:dur, vel:clamp(vel, .25, 1) });
       line.push(target);
@@ -1120,10 +1398,12 @@ function genMelody(seed, fromHum){
 
 function genBass(seed){
   seedRand(seed || 5150);
+  var ry = (!S.rhythmAuto) ? rhythmNow() : null;
   var style = { citypop:'funk', lofi:'straight', cinematic:'sub', synthwave:'pulse', acoustic:'straight', hiphop:'sub',
     news:'straight', breaking:'pulse', bossa:'bossa', kpop:'funk', ballad:'straight', funk:'funk',
     chiptune:'pulse', ambient:'sub', techhouse:'pulse', neosoul:'walk' }[S.preset] || 'straight';
   var out = [];
+  var BL = barLen();
   for (var b = 0; b < S.bars; b++) {
     var ch = S.chords[b]; if (!ch) continue;
     var e = barEnergy(b);
@@ -1134,20 +1414,28 @@ function genBass(seed){
     while (root < 33) root += 12;
     var fifth = root + 7, oct = root + 12;
     var steps;
-    if (style === 'funk')       steps = e > .6 ? [[0,root],[3,oct],[6,fifth],[8,root],[11,oct],[14,fifth]] : [[0,root],[6,fifth],[8,root],[14,oct]];
+    if (ry && ry.bass && ry.bass.length) {
+      /* 리듬 패턴 전용 베이스 리듬 */
+      steps = ry.bass.filter(function(p2){ return p2[0] < BL; }).map(function(p2){
+        return [p2[0], p2[1] === 'fifth' ? fifth : p2[1] === 'oct' ? oct : root];
+      });
+    }
+    else if (style === 'funk')  steps = e > .6 ? [[0,root],[3,oct],[6,fifth],[8,root],[11,oct],[14,fifth]] : [[0,root],[6,fifth],[8,root],[14,oct]];
     else if (style === 'pulse') steps = [[0,root],[2,oct],[4,root],[6,oct],[8,root],[10,oct],[12,root],[14,oct]];
     else if (style === 'sub')   steps = [[0,root],[8,root],[14,chance(.5) ? fifth : oct]];
     else if (style === 'bossa') steps = e > .5 ? [[0,root],[3,fifth],[6,oct],[10,root],[13,fifth]] : [[0,root],[6,fifth],[10,oct]];
     else if (style === 'walk')  steps = [[0,root],[4,fifth],[8,oct],[12,fifth],[14,chance(.5) ? fifth : oct]];
     else                        steps = [[0,root],[6,fifth],[8,root],[12,oct]];
-    steps.forEach(function(p){
-      out.push({ bar:b, step:p[0], midi:p[1], dur: p[0] === 0 ? 3 : 2, vel: clamp(.62 + e * .3, .3, 1) });
+    steps = steps.filter(function(p2){ return p2[0] < BL; });
+    var bdur = (ry && ry.bassDur) ? ry.bassDur : null;
+    steps.forEach(function(p2){
+      out.push({ bar:b, step:p2[0], midi:p2[1], dur: bdur || (p2[0] === 0 ? 3 : 2), vel: clamp(.62 + e * .3, .3, 1) });
     });
     /* 다음 코드로 넘어가는 접근음 */
     var nextRoot = S.chords[(b + 1) % S.bars].notes[0] - 12;
     while (nextRoot > 48) nextRoot -= 12;
     while (nextRoot < 33) nextRoot += 12;
-    if (e > .5 && chance(.55)) out.push({ bar:b, step:15, midi: nextRoot > root ? nextRoot - 1 : nextRoot + 1, dur:1, vel:.5 });
+    if (e > .5 && chance(.55) && !bdur) out.push({ bar:b, step: BL - 1, midi: nextRoot > root ? nextRoot - 1 : nextRoot + 1, dur:1, vel:.5 });
   }
   return out;
 }
@@ -1156,7 +1444,9 @@ function genArp(seed){
   seedRand(seed || 3131);
   var out = [];
   var pObj = PRESETS.filter(function(x){ return x.id === S.preset; })[0];
-  var fixedSteps = pObj && pObj.arpPat && pObj.arpPat.length ? pObj.arpPat : null;
+  var ry = (!S.rhythmAuto) ? rhythmNow() : null;
+  var fixedSteps = (ry && ry.arpPat && ry.arpPat.length) ? ry.arpPat.slice()
+    : (pObj && pObj.arpPat && pObj.arpPat.length ? pObj.arpPat : null);
   for (var b = 0; b < S.bars; b++) {
     var ch = S.chords[b]; if (!ch) continue;
     var e = barEnergy(b);
@@ -1177,8 +1467,8 @@ function genArp(seed){
       }
       continue;
     }
-    var count = e > .8 ? 16 : e > .5 ? 8 : 4;
-    var gap = 16 / count;
+    var count = e > .8 ? barLen() : e > .5 ? 8 : 4;
+    var gap = barLen() / count;
     for (var k = 0; k < count; k++) {
       var idx = seq[k % seq.length] % tones.length;
       out.push({ bar:b, step: Math.round(k * gap), midi: tones[idx], dur: Math.max(1, Math.round(gap * .8)), vel: (k % 4 === 0 ? .55 : .34) + e * .18 });
@@ -1202,13 +1492,13 @@ function genVocal(seed){
     var top = ch.notes[ch.notes.length - 1] + 12;
     var mid = ch.notes[Math.max(0, ch.notes.length - 2)] + 12;
     if (inst === 'vox-chops'){
-      for (var s = 0; s < 16; s += 2){
+      for (var s = 0; s < barLen(); s += 2){
         if (chance(.58)) continue;
         out.push({ bar:b, step:s, midi: chance(.3) ? top : mid, dur:1, vel: clamp(.24 + e * .2, .2, .62) });
       }
     } else {
-      out.push({ bar:b, step:0, midi:top, dur:16, vel: clamp(.24 + e * .2, .2, .6) });
-      if (e > .5) out.push({ bar:b, step:8, midi:mid, dur:8, vel: clamp(.2 + e * .16, .18, .5) });
+      out.push({ bar:b, step:0, midi:top, dur:barLen(), vel: clamp(.24 + e * .2, .2, .6) });
+      if (e > .5) out.push({ bar:b, step:Math.floor(barLen() / 2), midi:mid, dur:Math.floor(barLen() / 2), vel: clamp(.2 + e * .16, .18, .5) });
     }
   }
   return out;
@@ -1218,30 +1508,45 @@ function genDrums(seed){
   seedRand(seed || 4242);
   var kitId = S.tracks.filter(function(t){ return t.role === 'drums'; })[0].inst;
   var pObj = PRESETS.filter(function(x){ return x.id === S.preset; })[0];
-  var pat = (pObj && pObj.pat && DRUM_PAT[pObj.pat]) || DRUM_PAT[kitId] || DRUM_PAT['kit-cr78'];
+  var ry = rhythmNow();
+  var pat = null;
+  /* 리듬 칩을 직접 골랐으면 그 리듬이, 프리셋을 고른 직후엔 프리셋 전용 패턴이 우선 */
+  if (!S.rhythmAuto && ry) pat = ry.pat;
+  else if (pObj && pObj.pat && DRUM_PAT[pObj.pat]) pat = DRUM_PAT[pObj.pat];
+  else if (ry) pat = ry.pat;
+  else pat = DRUM_PAT[kitId] || DRUM_PAT['kit-cr78'];
+  var BL = barLen();
   var out = [];
+  function hit(p, row, s){ return p && p[row] ? p[row].charAt(s) === '1' : false; }
   for (var b = 0; b < S.bars; b++) {
     var e = barEnergy(b);
     var sec = sectionOf(b);
     var useB = (sec.name === 'B' || sec.name === "A′") && e > .55;
-    var p = useB ? pat.B : pat.A;
+    var p2 = useB ? pat.B : pat.A;
     var isFill = S.fill && ((b + 1) % 4 === 0) && b > 0;
-    for (var s = 0; s < 16; s++) {
+    for (var s = 0; s < BL; s++) {
       var accent = (s % 4 === 0) ? 1 : (s % 2 === 0 ? .82 : .68);
-      if (isFill && s >= 12) {
-        var rowF = s === 12 ? 'snare' : s === 13 ? 'tom1' : s === 14 ? 'tom2' : 'tom3';
-        out.push({ bar:b, step:s, row:rowF, vel: clamp(.5 + (s - 12) * .12 + e * .2, .3, 1) });
+      if (isFill && s >= BL - 4) {
+        var rowF = s === BL - 4 ? 'snare' : s === BL - 3 ? 'tom1' : s === BL - 2 ? 'tom2' : 'tom3';
+        out.push({ bar:b, step:s, row:rowF, vel: clamp(.5 + (s - (BL - 4)) * .12 + e * .2, .3, 1) });
         continue;
       }
-      if (p.kick[s] === '1' && (e > .28 || s === 0)) out.push({ bar:b, step:s, row:'kick', vel: clamp(.72 + e * .28, .3, 1) });
-      if (p.snare[s] === '1' && e > .42) out.push({ bar:b, step:s, row:'snare', vel: clamp(.66 + e * .3, .3, 1) });
-      if (p.hat[s] === '1' && e > .22) out.push({ bar:b, step:s, row:'hat', vel: clamp(accent * (.24 + e * .26), .12, .78) });
-      if (p.ohat[s] === '1' && e > .5) out.push({ bar:b, step:s, row:'ohat', vel: clamp(.42 + e * .22, .2, .9) });
+      if (hit(p2, 'kick', s) && (e > .28 || s === 0)) out.push({ bar:b, step:s, row:'kick', vel: clamp(.72 + e * .28, .3, 1) });
+      if (hit(p2, 'snare', s) && e > .42) out.push({ bar:b, step:s, row:'snare', vel: clamp(.66 + e * .3, .3, 1) });
+      if (hit(p2, 'hat', s) && e > .22) out.push({ bar:b, step:s, row:'hat', vel: clamp(accent * (.24 + e * .26), .12, .78) });
+      if (hit(p2, 'ohat', s) && e > .5) out.push({ bar:b, step:s, row:'ohat', vel: clamp(.42 + e * .22, .2, .9) });
     }
-    /* 고에너지 구간 16분 하이햇 롤 */
-    if (e > .88 && !isFill) {
-      for (var s2 = 1; s2 < 16; s2 += 2) {
-        if (p.hat[s2] !== '1') out.push({ bar:b, step:s2, row:'hat', vel:.26 });
+    /* 고에너지 구간 16분 하이햇 롤 — 리듬 칩을 직접 고른 경우엔 그 패턴의 하이햇 모양을 지킨다 */
+    var rollOk = S.rhythmAuto || !ry || !!ry.rollHat;
+    if (e > .88 && !isFill && rollOk) {
+      for (var s2 = 1; s2 < BL; s2 += 2) {
+        if (!hit(p2, 'hat', s2)) out.push({ bar:b, step:s2, row:'hat', vel:.26 });
+      }
+    }
+    /* 트랩 리듬은 중간 에너지에서도 16분 롤로 굴린다 */
+    if (!S.rhythmAuto && ry && ry.id === 'trap16' && e > .58 && !isFill) {
+      for (var s3 = 1; s3 < BL; s3 += 2) {
+        if (!hit(p2, 'hat', s3)) out.push({ bar:b, step:s3, row:'hat', vel: clamp(.16 + e * .12, .12, .34) });
       }
     }
   }
@@ -1255,35 +1560,43 @@ function rebuildEvents(){
   for (var i = 0; i < total; i++) ev[i] = [];
   var tIdx = {};
   S.tracks.forEach(function(t, i){ tIdx[t.role] = i; });
+  var BL = barLen();
+  var ry = (!S.rhythmAuto) ? rhythmNow() : null;
 
   S.chords.forEach(function(ch, b){
-    var step = b * 16;
-    if (step >= total) return;
-    ch.notes.forEach(function(n, ni){
-      /* 코드 롤링 — 위 음으로 갈수록 살짝 늦게 (기타 스트럼처럼) */
-      ev[step].push({ t: tIdx.chords, midi: n, dur: 15, vel: .52, roll: (S.roll / 100) * 0.14 * ni });
+    var step0 = b * BL;
+    if (step0 >= total) return;
+    /* 리듬 칩을 골랐으면 코드 컴핑도 그 리듬대로 (하우스 스탭·보사노바 컴핑·스타카토 등) */
+    var comps = (ry && ry.comp && ry.comp.length) ? ry.comp : [[0, BL]];
+    comps.forEach(function(cp){
+      var base = step0 + cp[0];
+      if (base >= total) return;
+      ch.notes.forEach(function(n, ni){
+        /* 코드 롤링 — 위 음으로 갈수록 살짝 늦게 (기타 스트럼처럼) */
+        ev[base].push({ t: tIdx.chords, midi: n, dur: Math.max(1, Math.min(cp[1] || BL, total - base)), vel: .52, roll: (S.roll / 100) * 0.14 * ni });
+      });
     });
   });
   S.notes.forEach(function(n){
-    var s = n.bar * 16 + n.step;
+    var s = n.bar * BL + n.step;
     if (s < total) ev[s].push({ t: tIdx.melody, midi: n.midi, dur: n.dur || 2, vel: n.vel || .75 });
   });
   S.bass.forEach(function(n){
-    var s = n.bar * 16 + n.step;
+    var s = n.bar * BL + n.step;
     if (s < total) ev[s].push({ t: tIdx.bass, midi: n.midi, dur: n.dur || 2, vel: n.vel || .8 });
   });
   if (tIdx.vocal != null) (S.vocal || []).forEach(function(n){
-    var s = n.bar * 16 + n.step;
+    var s = n.bar * BL + n.step;
     if (s < total) ev[s].push({ t: tIdx.vocal, midi: n.midi, dur: n.dur || 8, vel: n.vel || .4 });
   });
   S.arp.forEach(function(n){
-    var s = n.bar * 16 + n.step;
+    var s = n.bar * BL + n.step;
     if (s < total) ev[s].push({ t: tIdx.arp, midi: n.midi, dur: n.dur || 1, vel: n.vel || .4 });
   });
   S.drums.forEach(function(n){
     /* 마지막 마디 드럼 브레이크다운 — 킥만 1·3박에 남긴다 */
     if (S.breakdown && S.bars > 2 && n.bar === S.bars - 1 && (n.row !== 'kick' || n.step % 8 !== 0)) return;
-    var s = n.bar * 16 + n.step;
+    var s = n.bar * BL + n.step;
     if (s < total) ev[s].push({ t: tIdx.drums, row: n.row, dur: 1, vel: n.vel || .8 });
   });
 
@@ -1413,6 +1726,10 @@ function guessPreset(text){
 function applyPresetValues(p, keepMood){
   S.preset = p.id; S.prog = p.prog || p.id; S.ext = p.ext || '7';
   S.key = p.key; S.mode = presetScale(p); S.bpm = p.bpm; S.bright = p.bright; S.energy = p.energy;
+  /* 프리셋 ↔ 리듬 패턴 자동 연동 (프리셋은 자기 드럼 패턴을 그대로 유지) */
+  S.rhythm = presetRhythm(p);
+  S.rhythmAuto = true;
+  S.meter = (rhythmOf(S.rhythm) && rhythmOf(S.rhythm).meter === 3) ? 3 : 4;
   if (p.swing != null) S.swing = clamp(p.swing, 0, 60);
   var byRole = { melody:p.mel, chords:p.chd, bass:p.bas, drums:p.drm, arp:p.arp || 'guitar' };
   /* 잠근 트랙은 프리셋을 바꿔도 악기를 그대로 둔다 */
@@ -1458,6 +1775,7 @@ function syncPresetUI(){
   if (AU.ctx && AU.master) {
     AU.master.low.gain.value = S.master.low;
   }
+  if (typeof renderSoundPalette === 'function') { try { renderSoundPalette(); } catch (e) {} }
   updatePrompt();
 }
 
@@ -1476,7 +1794,7 @@ function updatePrompt(){
 function refreshStats(){
   var n = $('stat-bars'); if (n) n.textContent = S.bars;
   var c = $('stat-notes'); if (c) c.textContent = S.eventCount || 0;
-  var barSec = 4 * 60 / S.bpm;
+  var barSec = barSecAt(S.bpm);
   var l = $('stat-len'); if (l) l.textContent = (barSec * S.bars).toFixed(1) + 's';
   var cl = $('chord-line');
   if (cl && S.chords.length) {
@@ -1506,24 +1824,25 @@ function refreshStats(){
 var API_URL = 'https://stock-dashboard-live-bice.vercel.app/api/content-ai';
 
 function planLoop(){
-  var barSec = 4 * 60 / S.bpm;
+  var BPB = beatsPerBar();
+  var barSec = BPB * 60 / S.bpm;
   var L = S.loop;
   if (L.type === 'sec') {
     var bars = Math.max(1, Math.round(L.value / barSec));
     if (S.exactSec === false) {
       /* 템포를 지키고 마디에 맞춘 근사 길이 — 미리 들은 그대로 저장된다 */
-      var realSec = bars * 4 * 60 / S.bpm;
+      var realSec = bars * BPB * 60 / S.bpm;
       return { bars:bars, bpm:S.bpm, sec: realSec, exact: Math.abs(realSec - L.value) < 0.05, adjusted:false };
     }
-    var bpmExact = bars * 4 * 60 / L.value;
+    var bpmExact = bars * BPB * 60 / L.value;
     var diff = Math.abs(bpmExact - S.bpm) / S.bpm;
     if (diff <= 0.1 && bpmExact >= 60 && bpmExact <= 175) {
       var adjBpm = Math.round(bpmExact * 10) / 10;
-      return { bars:bars, bpm: adjBpm, sec: bars * 4 * 60 / adjBpm, exact:true, adjusted: Math.abs(bpmExact - S.bpm) > 0.15 };
+      return { bars:bars, bpm: adjBpm, sec: bars * BPB * 60 / adjBpm, exact:true, adjusted: Math.abs(bpmExact - S.bpm) > 0.15 };
     }
-    return { bars:bars, bpm:S.bpm, sec: bars * 4 * 60 / S.bpm, exact:false, adjusted:false };
+    return { bars:bars, bpm:S.bpm, sec: bars * BPB * 60 / S.bpm, exact:false, adjusted:false };
   }
-  return { bars:L.value, bpm:S.bpm, sec: L.value * 4 * 60 / S.bpm, exact:true, adjusted:false };
+  return { bars:L.value, bpm:S.bpm, sec: L.value * BPB * 60 / S.bpm, exact:true, adjusted:false };
 }
 
 function refreshLoopInfo(){
@@ -1755,7 +2074,7 @@ function encodeWav(buffer, opts){
 /* 들리는 그대로 오프라인 렌더 + 루프 이음매를 위해 꼬리를 앞에 감아 넣는다 */
 function renderLoop(plan){
   var sr = 44100;
-  var barSec = 4 * 60 / plan.bpm;
+  var barSec = barSecAt(plan.bpm);
   var bodySec = plan.bars * barSec;
   var tailSec = Math.min(2.6, Math.max(1.2, barSec));
   var totalSamples = Math.ceil((bodySec + tailSec) * sr);
@@ -1777,17 +2096,17 @@ function renderLoop(plan){
     nodes[t.id] = gain;
   });
 
-  var sd = barSec / 16;
-  var arrSteps = S.bars * 16, loopSteps = plan.bars * 16;
+  var sd = barSec / barLen();
+  var arrSteps = S.bars * barLen(), loopSteps = plan.bars * barLen();
   var reps = Math.ceil(loopSteps / arrSteps);
   for (var rep = 0; rep < reps; rep++) {
     for (var st = 0; st < arrSteps; st++) {
       var gs = rep * arrSteps + st;
       if (gs >= loopSteps) break;
       /* 라이저도 오프라인 렌더에 포함 — 저장한 WAV 가 들리는 것과 같아진다 */
-      if (S.riser && gs % 16 === 0){
-        var rbar = Math.floor(gs / 16) % Math.max(1, S.bars);
-        if (riserBars().indexOf(rbar) > -1) riserFx(octx, master.in, gs * sd, 16 * sd);
+      if (S.riser && gs % barLen() === 0){
+        var rbar = Math.floor(gs / barLen()) % Math.max(1, S.bars);
+        if (riserBars().indexOf(rbar) > -1) riserFx(octx, master.in, gs * sd, barLen() * sd);
       }
       var list = S.events[st];
       if (!list || !list.length) continue;
@@ -2139,9 +2458,9 @@ function midiTrack(chunkEvents, tpq){
 function exportMidi(){
   var plan = planLoop();
   var tpq = 480;
-  var barTicks = tpq * 4;
+  var barTicks = tpq * beatsPerBar();
   var secPerBeat = 60 / plan.bpm;
-  var secs = plan.bars * 4 * secPerBeat;
+  var secs = plan.bars * beatsPerBar() * secPerBeat;
   var tracksOut = [];
   var seq = 0;
 
@@ -2149,7 +2468,7 @@ function exportMidi(){
     var evs = [], t = S.tracks.filter(function(x){ return x.role === role; })[0];
     if (!t) return null;
     var chBase = channel;
-    var arrSteps = S.bars * 16, loopSteps = plan.bars * 16, reps = Math.ceil(loopSteps / arrSteps);
+    var arrSteps = S.bars * barLen(), loopSteps = plan.bars * barLen(), reps = Math.ceil(loopSteps / arrSteps);
     for (var rep = 0; rep < reps; rep++) {
       for (var st = 0; st < arrSteps; st++) {
         var gs = rep * arrSteps + st;
@@ -2190,7 +2509,7 @@ function exportMidi(){
   var usPerQuarter = Math.round(60000000 / plan.bpm);
   var tempoBytes = [0xFF, 0x51, 0x03, (usPerQuarter >> 16) & 0xFF, (usPerQuarter >> 8) & 0xFF, usPerQuarter & 0xFF];
   var meta = [{ tick:0, seq:-9, bytes: tempoBytes },
-              { tick:0, seq:-8, bytes:[0xFF, 0x58, 0x04, 0x04, 0x02, 0x18, 0x08] }];
+              { tick:0, seq:-8, bytes:[0xFF, 0x58, 0x04, beatsPerBar(), 0x02, 0x18, 0x08] }];
   tracksOut.unshift(midiTrack(meta, tpq));
 
   var header = [0x4D, 0x54, 0x68, 0x64, 0x00, 0x00, 0x00, 0x06, 0x00, 0x01,
@@ -2208,6 +2527,7 @@ function projectSnapshot(){
   return {
     v: 1, at: Date.now(), title: S.aiTitle || 'AURA 프로젝트',
     bpm:S.bpm, key:S.key, mode:S.mode, bars:S.bars, preset:S.preset, prog:S.prog, ext:S.ext,
+    meter:S.meter, rhythm:S.rhythm, rhythmAuto:!!S.rhythmAuto,
     bright:S.bright, energy:S.energy, swing:S.swing, humanize:S.humanize, fill:S.fill,
     energyCurve:S.energyCurve, chords:S.chords, notes:S.notes, bass:S.bass, arp:S.arp, drums:S.drums, vocal:S.vocal,
     hum:S.hum, tracks:S.tracks.map(function(t){ return { id:t.id, inst:t.inst, vol:t.vol, pan:t.pan, mute:t.mute, solo:t.solo, locked:!!t.locked }; }),
@@ -2219,6 +2539,9 @@ function applyProject(p){
   if (!p || !p.chords) { toast('프로젝트 파일을 읽을 수 없습니다', 'err'); return false; }
   S.bpm = p.bpm || S.bpm; S.key = p.key != null ? p.key : S.key; S.mode = p.mode || S.mode;
   S.bars = p.bars || S.bars; S.preset = p.preset || S.preset;
+  S.meter = p.meter === 3 ? 3 : 4;
+  if (p.rhythm && rhythmOf(p.rhythm)) S.rhythm = p.rhythm;
+  S.rhythmAuto = p.rhythmAuto !== false;
   S.prog = p.prog || S.prog; S.ext = p.ext || S.ext;
   S.bright = p.bright != null ? p.bright : S.bright;
   S.energy = p.energy != null ? p.energy : S.energy;
@@ -2329,7 +2652,7 @@ function drawEnergy(){
     c.beginPath(); c.moveTo(i * barW, 0); c.lineTo(i * barW, H); c.stroke();
     if (i % 4 === 0) { c.fillStyle = P.tx2; c.fillText('BAR ' + (i + 1), i * barW + 4 * d, 13 * d); }
   }
-  var curBar = AU.playing ? Math.floor(S.step / 16) % Math.max(1, S.bars) : -1;
+  var curBar = AU.playing ? Math.floor(S.step / barLen()) % Math.max(1, S.bars) : -1;
   for (var b = 0; b < cols; b++) {
     var v = curveValueAt(b);
     var bh = Math.max(4 * d, v * (H - 26 * d));
@@ -2352,7 +2675,7 @@ function drawRoll(){
   var f = fitCanvas(cv); if (!f) return;
   var c = f.c, W = f.w, H = f.h, d = f.d, P = pal();
   c.fillStyle = P.bg; c.fillRect(0, 0, W, H);
-  var cols = S.rollBars * 16, rows = ROLL_HIGH - ROLL_LOW + 1;
+  var cols = S.rollBars * barLen(), rows = ROLL_HIGH - ROLL_LOW + 1;
   var cw = W / cols, rh = H / rows;
   for (var r = 0; r < rows; r++) {
     var midi = ROLL_HIGH - r;
@@ -2364,7 +2687,7 @@ function drawRoll(){
     }
   }
   for (var i = 0; i <= cols; i++) {
-    c.strokeStyle = i % 16 === 0 ? P.beat : (i % 4 === 0 ? P.grid : P.gridSoft);
+    c.strokeStyle = i % barLen() === 0 ? P.beat : (i % 4 === 0 ? P.grid : P.gridSoft);
     c.beginPath(); c.moveTo(i * cw, 0); c.lineTo(i * cw, H); c.stroke();
   }
   for (var r2 = 0; r2 <= rows; r2++) {
@@ -2374,7 +2697,7 @@ function drawRoll(){
   S.notes.forEach(function(n){
     if (n.bar < S.rollStart || n.bar >= endBar) return;
     if (n.midi < ROLL_LOW || n.midi > ROLL_HIGH) return;
-    var col = (n.bar - S.rollStart) * 16 + n.step;
+    var col = (n.bar - S.rollStart) * barLen() + n.step;
     var row = ROLL_HIGH - n.midi;
     var x = col * cw, y = row * rh;
     var w = Math.max(cw * 0.92, (n.dur || 1) * cw - 1);
@@ -2384,10 +2707,10 @@ function drawRoll(){
     c.globalAlpha = 1;
   });
   if (AU.playing) {
-    var st = S.step % (S.bars * 16);
-    var barNow = Math.floor(st / 16), stepNow = st % 16;
+    var st = S.step % (S.bars * barLen());
+    var barNow = Math.floor(st / barLen()), stepNow = st % barLen();
     if (barNow >= S.rollStart && barNow < endBar) {
-      var px = ((barNow - S.rollStart) * 16 + stepNow) * cw;
+      var px = ((barNow - S.rollStart) * barLen() + stepNow) * cw;
       c.strokeStyle = 'rgba(244,63,94,.85)'; c.lineWidth = 1.6 * d;
       c.beginPath(); c.moveTo(px, 0); c.lineTo(px, H); c.stroke();
     }
@@ -2401,12 +2724,13 @@ function drawDrums(){
   var f = fitCanvas(cv); if (!f) return;
   var c = f.c, W = f.w, H = f.h, d = f.d, P = pal();
   c.fillStyle = P.bg; c.fillRect(0, 0, W, H);
-  var gutter = 46 * d, cw = (W - gutter) / 16, rh = H / DRUM_ROWS.length;
+  var BL = barLen();
+  var gutter = 46 * d, cw = (W - gutter) / BL, rh = H / DRUM_ROWS.length;
   c.font = '700 ' + (9 * d) + 'px "Pretendard Variable", Pretendard, sans-serif';
   DRUM_ROWS.forEach(function(row, ri){
     c.fillStyle = P.tx2;
     c.fillText(row.label, 5 * d, ri * rh + rh * 0.66);
-    for (var s = 0; s < 16; s++) {
+    for (var s = 0; s < BL; s++) {
       var x = gutter + s * cw, y = ri * rh;
       var hit = S.drums.some(function(n){ return n.bar === S.drumBar && n.step === s && n.row === row.id; });
       c.fillStyle = hit ? (ri === 0 ? P.note : ri === 1 ? P.note2 : P.accent) : (s % 4 === 0 ? 'rgba(148,163,184,.10)' : 'rgba(148,163,184,.04)');
@@ -2415,15 +2739,15 @@ function drawDrums(){
       c.globalAlpha = 1;
     }
   });
-  for (var i = 0; i <= 16; i++) {
+  for (var i = 0; i <= BL; i++) {
     c.strokeStyle = i % 4 === 0 ? P.beat : P.gridSoft;
     c.beginPath(); c.moveTo(gutter + i * cw, 0); c.lineTo(gutter + i * cw, H); c.stroke();
   }
   var lab = $('drum-bar-label');
   if (lab) lab.textContent = (S.drumBar + 1) + '마디';
   /* 지금 소리 나는 16분 칸 표시 */
-  if (AU.playing && Math.floor(S.step / 16) % Math.max(1, S.bars) === S.drumBar) {
-    var live = S.step % 16;
+  if (AU.playing && Math.floor(S.step / barLen()) % Math.max(1, S.bars) === S.drumBar) {
+    var live = S.step % barLen();
     c.strokeStyle = 'rgba(244,63,94,.9)'; c.lineWidth = 1.6 * d;
     c.strokeRect(gutter + live * cw + 0.8 * d, 0, cw - 1.6 * d, H);
   }
@@ -2472,10 +2796,10 @@ function bindCanvasInput(){
   var lastCell = '';
   function rollAct(ev, isStart){
     var p = canvasPoint(roll, ev);
-    var cols = S.rollBars * 16, rows = ROLL_HIGH - ROLL_LOW + 1;
+    var cols = S.rollBars * barLen(), rows = ROLL_HIGH - ROLL_LOW + 1;
     var col = clamp(Math.floor(p.x * cols), 0, cols - 1);
     var row = clamp(Math.floor(p.y * rows), 0, rows - 1);
-    var bar = S.rollStart + Math.floor(col / 16), step = col % 16;
+    var bar = S.rollStart + Math.floor(col / barLen()), step = col % barLen();
     var midi = ROLL_HIGH - row;
     var key = bar + ':' + step;
     if (key === lastCell) return;
@@ -2502,7 +2826,7 @@ function bindCanvasInput(){
     var p = canvasPoint(drum, ev);
     var gutter = 46 / Math.max(1, p.w);
     if (p.x <= gutter) return;
-    var col = clamp(Math.floor((p.x - gutter) / (1 - gutter) * 16), 0, 15);
+    var col = clamp(Math.floor((p.x - gutter) / (1 - gutter) * barLen()), 0, barLen() - 1);
     var row = clamp(Math.floor(p.y * DRUM_ROWS.length), 0, DRUM_ROWS.length - 1);
     var id = DRUM_ROWS[row].id;
     var key = id + ':' + col;
@@ -2607,7 +2931,7 @@ function renderPresets(){
 function slotBadge(instId){
   var d = INST[instId];
   if (!d) return '<span class="slot">—</span>';
-  if (d.kind === 'synth') return '<span class="slot synth">신스</span>';
+  if (d.kind === 'synth' || d.kind === 'drumkit') return '<span class="slot synth">신스</span>';
   var c = AU.instCache[instId];
   if (c && c.inst && c.inst.ready) return '<span class="slot live">샘플</span>';
   if (AU.failed[instId]) return '<span class="slot synth">신스 대체</span>';
@@ -3048,7 +3372,7 @@ function applyAI(d){
     S.drums = [];
     for (var bb = 0; bb < S.bars; bb++) {
       var e = barEnergy(bb);
-      for (var s = 0; s < 16; s++) {
+      for (var s = 0; s < barLen(); s++) {
         if (pk[s]) S.drums.push({ bar:bb, step:s, row:'kick', vel: clamp(.7 + e * .3, .3, 1) });
         if (ps[s] && e > .35) S.drums.push({ bar:bb, step:s, row:'snare', vel: clamp(.66 + e * .3, .3, 1) });
         if (ph[s] && e > .2) S.drums.push({ bar:bb, step:s, row:'hat', vel: clamp(.3 + e * .34, .15, .95) });
@@ -3305,6 +3629,7 @@ function saveSettings(){
       normMode:S.normMode, story:S.story,
       script:S.script, amb:S.amb, duck:S.duck, duckDepth:S.duckDepth, kbOct:S.kbOct,
       xy:S.xy, roll:S.roll, pump:S.pump, riser:S.riser, breakdown:S.breakdown,
+      rhythm:S.rhythm, rhythmAuto:!!S.rhythmAuto, meter:S.meter,
       tracks:S.tracks.map(function(t){ return { id:t.id, inst:t.inst, vol:t.vol, pan:t.pan, mute:t.mute, solo:t.solo, locked:!!t.locked }; })
     }));
   } catch (e) {}
@@ -3344,6 +3669,9 @@ function loadSettings(){
     if (s.pump != null) S.pump = !!s.pump;
     if (s.riser != null) S.riser = !!s.riser;
     if (s.breakdown != null) S.breakdown = !!s.breakdown;
+    if (s.rhythm && rhythmOf(s.rhythm)) S.rhythm = s.rhythm;
+    if (s.rhythmAuto != null) S.rhythmAuto = !!s.rhythmAuto;
+    if (s.meter != null) S.meter = (s.meter === 3) ? 3 : 4;
     if (s.tracks) s.tracks.forEach(function(t){
       var cur = S.tracks.filter(function(x){ return x.id === t.id; })[0];
       if (cur) { cur.inst = t.inst || cur.inst; cur.vol = t.vol != null ? t.vol : cur.vol; cur.pan = t.pan != null ? t.pan : cur.pan; cur.mute = !!t.mute; cur.solo = !!t.solo; cur.locked = !!t.locked; }
@@ -3388,6 +3716,7 @@ function applyStateToUI(){
   if (typeof syncV6Controls === 'function') syncV6Controls();
   if (typeof renderStoryUI === 'function') renderStoryUI();
   if (typeof drawXYPad === 'function') drawXYPad();
+  if (typeof renderSoundPalette === 'function') renderSoundPalette();
 }
 
 function warmUp(){
@@ -3430,6 +3759,7 @@ function boot(){
   if (typeof initV8 === 'function') initV8();
   if (typeof initV6 === 'function') initV6();
   if (typeof initExtras === 'function') initExtras();
+  if (typeof bindSoundPalette === 'function') bindSoundPalette();
 
   /* 리사이즈 */
   var rt = null;
@@ -3507,6 +3837,64 @@ window.Aura = {
   mux: function(sec){ return exportMuxedVideoWithBgm(sec); },
   sampleDuck: playSampleNarrationCadence,
   toggleDrumCell: function(row, step){ return drumToggle(row, step); },
+  /* v10 — 사운드 팔레트 */
+  rhythm: applyRhythm,
+  kit: applyDrumKit,
+  lead: applyLeadTone,
+  rhythms: function(){ return RHYTHMS.map(function(r){ return { id:r.id, name:r.name, meter:r.meter, swing:r.swing, swingNow:r.swing != null ? r.swing : 0, bass:r.bass, comp:r.comp, arpPat:r.arpPat, A:r.pat.A, B:r.pat.B }; }); },
+  kits: function(){ return KIT_TONES.slice(); },
+  kitParams: function(){ return DRUM_KITS; },
+  leads: function(){ return LEAD_TONES.slice(); },
+  instKind: function(id){ return INST[id] ? INST[id].kind : null; },
+  /* 한 악기·킷·리듬의 소리를 오프라인으로 짧게 뽑아 파형 지문을 낸다 (다르면 지문도 다르다) */
+  probe: function(opts){
+    opts = opts || {};
+    var sr = 44100, secs = opts.secs || 2.0;
+    var octx = new OfflineAudioContext(1, Math.ceil(sr * secs), sr);
+    var out = octx.createGain(); out.gain.value = 0.9; out.connect(octx.destination);
+    var def = INST[opts.inst];
+    if (!def) return Promise.reject(new Error('no inst ' + opts.inst));
+    if (def.kind === 'drumkit'){
+      var rows = opts.rows || ['kick','snare','hat','ohat'];
+      rows.forEach(function(row, i){ synthDrumKit(octx, out, def, row, 0.02 + i * (secs / rows.length), 0.9); });
+    } else if (def.kind === 'synth'){
+      var midis = opts.midis || [60, 64, 67];
+      midis.forEach(function(m, i){ synthVoice(octx, out, def, m, 0.02 + i * (secs / midis.length), secs / midis.length - 0.05, 0.85); });
+    } else {
+      return Promise.reject(new Error('probe needs synth/drumkit: ' + opts.inst));
+    }
+    return octx.startRendering().then(function(buf){
+      var d = buf.getChannelData(0), peak = 0, sum = 0, zc = 0, prev = 0, wsum = 0, wsum2 = 0, n = 0;
+      var hp = 0;
+      for (var i = 0; i < d.length; i += 4){
+        var v = d[i], a = Math.abs(v);
+        if (a > peak) peak = a;
+        sum += v * v;
+        if ((v >= 0) !== (prev >= 0)) zc++;
+        hp = 0.85 * (hp + v - prev);   /* 대략적 고역 성분 */
+        wsum += Math.abs(hp); wsum2 += v * v; n++;
+        prev = v;
+      }
+      return { inst:opts.inst, peak: Math.round(peak * 1000) / 1000, rms: Math.round(Math.sqrt(sum / Math.max(1, n)) * 1000) / 1000,
+        zcr: Math.round(zc / Math.max(1, n) * 1000) / 1000, brightness: Math.round(wsum / Math.max(1e-9, wsum2) * 100) / 100 };
+    });
+  },
+  /* 리듬 패턴의 실제 이벤트 모양 (스텝 수·드럼 행·베이스·코드 컴핑 수) */
+  rhythmGrid: function(bar){
+    var BL = barLen();
+    var B = (bar == null) ? S.drumBar : bar;
+    var rows = {};
+    drumRowList().forEach(function(r){ rows[r.id] = new Array(BL).fill(0); });
+    S.drums.forEach(function(n){ if (n.bar === B && rows[n.row] && n.step < BL) rows[n.row][n.step] = 1; });
+    var bassSteps = S.bass.filter(function(n){ return n.bar === B; }).map(function(n){ return n.step; }).sort(function(a, b){ return a - b; });
+    var chordSteps = [];
+    for (var s = 0; s < BL; s++){
+      var list = S.events[s] || [];
+      if (list.some(function(e){ return S.tracks[e.t] && S.tracks[e.t].role === 'chords'; })) chordSteps.push(s);
+    }
+    var arpSteps = S.arp.filter(function(n){ return n.bar === B; }).map(function(n){ return n.step; }).sort(function(a, b){ return a - b; });
+    return { rhythm:S.rhythm, auto:!!S.rhythmAuto, meter:S.meter, barLen:BL, bar:B, swing:S.swing, rows:rows, bass:bassSteps, chords:chordSteps, arp:arpSteps, events:S.eventCount };
+  },
   playKey: function(midi){ return playLiveNote(midi); },
   amb: ambApply,
   remix: function(){ return mutateArrangement(); },
@@ -3537,6 +3925,7 @@ window.Aura = {
     state: function(){
       return {
         bpm:S.bpm, key:S.key, mode:S.mode, bars:S.bars, preset:S.preset,
+        rhythm:S.rhythm, rhythmAuto:!!S.rhythmAuto, meter:S.meter, barLen:barLen(),
         story:S.story, normMode:S.normMode,
         chords:S.chords.length, notes:S.notes.length, drums:S.drums.length,
         events:S.eventCount, playing:AU.playing, step:AU.step,
@@ -3727,7 +4116,7 @@ function tpHighlight(){
   var lines = scriptLines();
   var idx = -1;
   if (AU.playing && S.bars > 0){
-    var bar = Math.floor(S.step / 16) % S.bars;
+    var bar = Math.floor(S.step / barLen()) % S.bars;
     idx = Math.min(lines.length - 1, Math.floor(bar / S.bars * lines.length));
     var n = box.children[idx];
     if (n && box.scrollHeight > box.clientHeight){
@@ -3759,16 +4148,18 @@ function drumRowList(){ return DRUM_ROWS; }
 function renderDrumSeq(){
   var box = $('dseq'); if (!box) return;
   var rows = drumRowList();
+  var BL = barLen();
   var html = '';
   rows.forEach(function(r){
     html += '<span class="lb">' + r.label + '</span>';
-    for (var s = 0; s < 16; s++){
+    for (var s = 0; s < BL; s++){
       var on = S.drums.some(function(n){ return n.bar === S.drumBar && n.step === s && n.row === r.id; });
       html += '<button type="button" data-row="' + r.id + '" data-step="' + s + '"' +
         ' class="' + (on ? 'on ' : '') + (s % 4 === 0 ? 'beat' : '') + '"' +
         ' aria-label="' + r.label + ' ' + (s + 1) + '칸" aria-pressed="' + (on ? 'true' : 'false') + '"></button>';
     }
   });
+  box.style.gridTemplateColumns = '29px repeat(' + BL + ',minmax(0,1fr))';
   box.innerHTML = html;
   Array.prototype.forEach.call(box.querySelectorAll('button[data-step]'), function(b){
     b.addEventListener('click', function(){ drumToggle(b.dataset.row, +b.dataset.step); });
@@ -3776,7 +4167,7 @@ function renderDrumSeq(){
   var lab = $('dseq-bar'); if (lab) lab.textContent = (S.drumBar + 1) + '마디';
   var kit = $('dseq-kit');
   var t = S.tracks.filter(function(x){ return x.role === 'drums'; })[0];
-  if (kit && t) kit.textContent = '킷 ' + (INST[t.inst] ? INST[t.inst].name : t.inst) + ' · ' + S.bars + '마디';
+  if (kit && t) kit.textContent = '킷 ' + (INST[t.inst] ? INST[t.inst].name : t.inst) + ' · ' + S.bars + '마디' + (barLen() === 12 ? ' · 3/4' : '');
   drumSeqTick();
 }
 
@@ -3801,8 +4192,8 @@ function hitPreview(row){
 
 function drumSeqTick(){
   var box = $('dseq'); if (!box || !box.children.length) return;
-  var barNow = Math.floor(S.step / 16) % Math.max(1, S.bars);
-  var st = S.step % 16;
+  var barNow = Math.floor(S.step / barLen()) % Math.max(1, S.bars);
+  var st = S.step % barLen();
   var show = AU.playing && barNow === S.drumBar;
   Array.prototype.forEach.call(box.querySelectorAll('button[data-step]'), function(b){
     b.classList.toggle('now', show && +b.dataset.step === st);
@@ -3869,12 +4260,12 @@ function playLiveNote(midi){
 function recordOverdub(midi){
   var bar, step;
   if (AU.playing){
-    var gs = AU.step % Math.max(1, S.bars * 16);
-    bar = Math.floor(gs / 16); step = gs % 16;
+    var gs = AU.step % Math.max(1, S.bars * barLen());
+    bar = Math.floor(gs / barLen()); step = gs % barLen();
   } else {
-    bar = Math.floor(S.overdubCursor / 16) % Math.max(1, S.bars);
-    step = S.overdubCursor % 16;
-    S.overdubCursor = (S.overdubCursor + 1) % Math.max(1, S.bars * 16);
+    bar = Math.floor(S.overdubCursor / barLen()) % Math.max(1, S.bars);
+    step = S.overdubCursor % barLen();
+    S.overdubCursor = (S.overdubCursor + 1) % Math.max(1, S.bars * barLen());
   }
   S.notes.push({ bar:bar, step:step, midi:midi, dur:2, vel:.85 });
   rebuildEvents(); refreshStats();
@@ -4060,7 +4451,7 @@ function loadVideoFile(file){
     S.videoDur = VID.dur;
     var b = $('video-dur'); if (b) b.textContent = fmtTime(VID.dur) + ' · ' + file.name.slice(0, 14);
     var note = $('fit-note');
-    var barSec = 4 * 60 / S.bpm;
+    var barSec = barSecAt(S.bpm);
     if (note) note.textContent = '영상 ' + fmtTime(VID.dur) + ' · 맞추면 약 ' +
       clamp(Math.round(VID.dur / barSec / 2) * 2, 4, 32) + '마디가 됩니다.';
     toast('영상 로드 완료 · ' + fmtTime(VID.dur), 'ok');
@@ -4094,7 +4485,7 @@ function pauseVideoPreview(){
 function autoFitSongFormToVideo(dur){
   return ensureAudio().then(function(){
     var target = Number(dur) || (VID.has && VID.dur ? VID.dur : (S.videoDur || 30));
-    var barSec = 4 * 60 / S.bpm;
+    var barSec = barSecAt(S.bpm);
     var bars = clamp(Math.round((target / barSec) / 2) * 2, 4, 32);
     S.bars = bars; S.rollStart = 0; S.drumBar = 0;
     S.chords = [];
@@ -4180,7 +4571,7 @@ function exportMuxedVideoWithBgm(limitSec){
         var chunks = [];
         rec.ondataavailable = function(e){ if (e.data && e.data.size) chunks.push(e.data); };
 
-        var barSec = 4 * 60 / S.bpm;
+        var barSec = barSecAt(S.bpm);
         var songSec = S.bars * barSec;
         var targetSec = Math.max(2, Math.min(limitSec || 120, demo ? songSec : Math.min(VID.dur || songSec, songSec + 2)));
         var overlay = $('chk-overlay') ? $('chk-overlay').checked : true;
@@ -4527,6 +4918,181 @@ function initV8(){
 
 /* 부팅은 마지막 조각(18_v6.js)에서 호출한다 */
 
+/* =============================================================================
+   19. 사운드 팔레트 — 리듬 패턴 8종 · 드럼 킷 4종 · 리드 음색 6종 (v10)
+   칩을 누르면 실제로 도는 값(드럼 16칸·베이스·코드 컴핑·스윙·박자·음색 파라미터)이 바뀐다.
+   ========================================================================== */
+var LEAD_TONES = ['piano', 'pluck', 'brass', 'lead', 'chip', 'bell'];
+var KIT_TONES  = ['kit-808', 'kit-lofi', 'kit-rock', 'kit-electro'];
+
+var LEAD_META = {
+  piano: { em:'🎹', sub:'그랜드 피아노 · 샘플' },
+  pluck: { em:'✨', sub:'짧게 튕기는 플럭' },
+  brass: { em:'🎺', sub:'브라스 섹션 스택' },
+  lead:  { em:'🎛', sub:'아날로그 리드 신스' },
+  chip:  { em:'🕹', sub:'8비트 사각파 칩튠' },
+  bell:  { em:'🔔', sub:'비화성 FM 감성 벨' }
+};
+var KIT_META = {
+  'kit-808':     { em:'🔊', sub:'서브킥 · 크리스피 햇' },
+  'kit-lofi':    { em:'📻', sub:'로우패스 · 비닐 질감' },
+  'kit-rock':    { em:'🥁', sub:'내추럴 킥/스네어 · 오픈햇' },
+  'kit-electro': { em:'⚡', sub:'EDM 킥 · 클랩' }
+};
+
+function drumTrack(){ return S.tracks.filter(function(t){ return t.role === 'drums'; })[0]; }
+function melodyTrack(){ return S.tracks.filter(function(t){ return t.role === 'melody'; })[0]; }
+
+function renderSoundPalette(){
+  var rb = $('rhythm-buttons');
+  if (rb) {
+    rb.innerHTML = RHYTHMS.map(function(r){
+      return '<button type="button" class="snd' + (S.rhythm === r.id ? ' on' : '') + '" data-rhythm="' + r.id + '" aria-pressed="' + (S.rhythm === r.id ? 'true' : 'false') + '">' +
+        '<span class="em">' + r.em + '</span><span>' + r.name + '<small>' + r.sub + '</small></span></button>';
+    }).join('');
+  }
+  var kb = $('kit-buttons');
+  var dt = drumTrack();
+  if (kb) {
+    kb.innerHTML = KIT_TONES.map(function(id){
+      var d = INST[id], m = KIT_META[id] || { em:'🥁', sub:'' };
+      var on = dt && dt.inst === id;
+      return '<button type="button" class="snd' + (on ? ' on' : '') + '" data-kit="' + id + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+        '<span class="em">' + m.em + '</span><span>' + (d ? d.name : id) + '<small>' + m.sub + '</small></span></button>';
+    }).join('');
+  }
+  var lb = $('lead-buttons');
+  var mt = melodyTrack();
+  if (lb) {
+    lb.innerHTML = LEAD_TONES.map(function(id){
+      var d = INST[id], m = LEAD_META[id] || { em:'🎹', sub:'' };
+      var on = mt && mt.inst === id;
+      return '<button type="button" class="snd' + (on ? ' on' : '') + '" data-lead="' + id + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+        '<span class="em">' + m.em + '</span><span>' + (d ? d.name : id) + '<small>' + m.sub + '</small></span></button>';
+    }).join('');
+  }
+  var rbadge = $('rhythm-badge');
+  if (rbadge) {
+    var ry = rhythmNow();
+    rbadge.textContent = (ry ? ry.name : '정박 팝') + (S.rhythmAuto ? ' · 프리셋 자동' : (S.meter === 3 ? ' · 12칸' : ' · 직접 선택'));
+    rbadge.className = 'badge' + (S.rhythmAuto ? '' : ' ok');
+  }
+  var kbadge = $('kit-badge');
+  if (kbadge && dt) {
+    kbadge.textContent = (INST[dt.inst] ? INST[dt.inst].name : dt.inst) + (INST[dt.inst] && INST[dt.inst].kind === 'drumkit' ? ' · 신스' : ' · 샘플');
+  }
+  var lbadge = $('lead-badge');
+  if (lbadge && mt) lbadge.textContent = INST[mt.inst] ? INST[mt.inst].name : mt.inst;
+  var rnote = $('rhythm-meter');
+  if (rnote) rnote.textContent = (S.meter === 3 ? '3/4 · 12칸' : '4/4 · 16칸') + ' · ' + (RHYTHMS.length) + '종';
+}
+
+/* ---------------- 리듬 패턴 적용 ---------------- */
+function applyRhythm(id){
+  var ry = rhythmOf(id);
+  if (!ry) return false;
+  var newMeter = ry.meter || 4;
+  var meterChanged = (S.meter || 4) !== newMeter;
+  S.rhythm = id; S.rhythmAuto = false; S.meter = newMeter;
+  if (ry.swing != null) S.swing = clamp(ry.swing, 0, 60);
+  var BL = barLen();
+  /* 3/4로 줄면 12칸을 넘는 음표는 정리한다 (그대로 두면 다음 마디로 새어 들어간다) */
+  if (meterChanged) {
+    S.notes = S.notes.filter(function(n){ return (n.step || 0) < BL; });
+    S.overdubCursor = 0;
+    S.drumBar = clamp(S.drumBar, 0, Math.max(0, S.bars - 1));
+    S.rollStart = clamp(S.rollStart, 0, Math.max(0, S.bars - S.rollBars));
+  }
+  S.drums = genDrums(4242);
+  S.bass = genBass(5150);
+  S.arp = genArp(3131);
+  rebuildEvents();
+  /* 시퀀서가 인트로(드럼이 거의 없는 마디)에 머물면 바뀐 게 안 보인다 — 가장 밀도 높은 마디로 */
+  var bestBar = 0, bestE = -1;
+  for (var q = 0; q < S.bars; q++) { var eq = barEnergy(q); if (eq > bestE) { bestE = eq; bestBar = q; } }
+  S.drumBar = bestBar;
+
+  var sw = $('swing-slider'); if (sw) sw.value = S.swing;
+  var swv = $('swing-val'); if (swv) swv.textContent = S.swing;
+  syncPresetUI();
+  renderSoundPalette();
+  refreshStats(); refreshLoopInfo(); drawAll();
+  if (typeof renderDrumSeq === 'function') renderDrumSeq();
+  saveSettings();
+  toast('리듬 패턴 · ' + ry.name + (newMeter === 3 && ry.name.indexOf('3/4') < 0 ? ' (3/4)' : '') + ' — 드럼·베이스·코드 컴핑을 다시 짰습니다', 'ok');
+  return true;
+}
+
+/* ---------------- 드럼 킷 적용 ---------------- */
+function applyDrumKit(id){
+  var t = drumTrack();
+  if (!t || !INST[id]) return false;
+  t.inst = id;
+  if (AU.ctx) { refreshMix(); prepareInst(id).then(function(){ updateSamplerStatus(); }).catch(function(){}); }
+  renderMixer();
+  if (typeof renderDrumSeq === 'function') renderDrumSeq();
+  drawDrums(); updateSamplerStatus(); renderSoundPalette(); saveSettings();
+  ensureAudio().then(function(){ previewKit(id); }).catch(function(){});
+  toast('드럼 킷 · ' + INST[id].name, 'ok');
+  return true;
+}
+
+/* ---------------- 리드 음색 적용 ---------------- */
+function applyLeadTone(id){
+  var t = melodyTrack();
+  if (!t || !INST[id]) return false;
+  t.inst = id;
+  if (AU.ctx) refreshMix();
+  renderMixer(); renderSoundPalette(); updateSamplerStatus(); saveSettings();
+  ensureAudio().then(function(){ return prepareInst(id); }).then(function(){
+    var tt = melodyTrack();
+    if (!tt || !AU.ctx) return;
+    var ch = S.chords[0];
+    var midi = ch && ch.notes && ch.notes.length ? ch.notes[ch.notes.length - 1] + 12 : 72;
+    fireEvent(AU.ctx, trackOutput(tt), tt, { midi:midi, dur:4, vel:.9 }, AU.ctx.currentTime + 0.05, stepDur());
+  }).catch(function(){});
+  toast('리드 음색 · ' + INST[id].name, 'ok');
+  return true;
+}
+
+function bindSoundPalette(){
+  var rb = $('rhythm-buttons');
+  if (rb && !rb.dataset.bound) {
+    rb.dataset.bound = '1';
+    rb.addEventListener('click', function(e){
+      var b = e.target.closest ? e.target.closest('[data-rhythm]') : null;
+      if (b) applyRhythm(b.getAttribute('data-rhythm'));
+    });
+  }
+  var kb = $('kit-buttons');
+  if (kb && !kb.dataset.bound) {
+    kb.dataset.bound = '1';
+    kb.addEventListener('click', function(e){
+      var b = e.target.closest ? e.target.closest('[data-kit]') : null;
+      if (b) applyDrumKit(b.getAttribute('data-kit'));
+    });
+  }
+  var lb = $('lead-buttons');
+  if (lb && !lb.dataset.bound) {
+    lb.dataset.bound = '1';
+    lb.addEventListener('click', function(e){
+      var b = e.target.closest ? e.target.closest('[data-lead]') : null;
+      if (b) applyLeadTone(b.getAttribute('data-lead'));
+    });
+  }
+  /* 칩 줄 길이가 제각각이면(구버전 캐시) 알려 준다 — 소리 없이 조용히 틀리는 일 방지 */
+  RHYTHMS.forEach(function(r){
+    var L = (r.meter === 3 ? 12 : 16);
+    ['kick','snare','hat','ohat'].forEach(function(k){
+      ['A','B'].forEach(function(x){
+        var v = (r.pat[x] && r.pat[x][k]) || '';
+        if (v.length !== L) console.warn('rhythm pattern length', r.id, x, k, v.length, '!=', L);
+      });
+    });
+  });
+  renderSoundPalette();
+}
+
 /* ---------------------------------------------------------------- 13. v6 기능
    AURA Studio v6 의 기능을 이 엔진에 맞춰 되살렸다.
    · 트랙 잠금(🔒) & 원클릭 리믹스 — 잠근 트랙은 두고 나머지만 새로
@@ -4818,13 +5384,13 @@ function toggleBeatbox(){
       var peak = Math.max(low, mid, high);
       if (peak > 55){
         var row = (low === peak) ? 'kick' : (mid === peak ? 'snare' : 'hat');
-        upsertDrum(BB.bar, BB.step % 16, row, clamp(peak / 170, .35, 1));
+        upsertDrum(BB.bar, BB.step % barLen(), row, clamp(peak / 170, .35, 1));
         renderDrumSeq(); drawDrums();
       }
       BB.step++;
       var barEl = $('bb-state');
-      if (barEl) barEl.textContent = '● ' + BB.step + '/16';
-      if (BB.step >= 16) stopBeatbox(true);
+      if (barEl) barEl.textContent = '● ' + BB.step + '/' + barLen();
+      if (BB.step >= barLen()) stopBeatbox(true);
     }, stepMs);
   }).catch(function(){
     stopBeatbox(false);

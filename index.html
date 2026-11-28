@@ -194,6 +194,17 @@ main{max-width:1180px;margin:0 auto;padding:11px 11px 34px;width:100%;}
 /* ---------- 프리셋 ---------- */
 .presets{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
 @media (max-width:360px){ .presets{grid-template-columns:repeat(2,1fr);} }
+/* 사운드 팔레트 — 리듬 패턴 · 드럼 킷 · 리드 음색 칩 */
+.soundgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.snd{display:flex;align-items:center;gap:7px;padding:8px 9px;border-radius:11px;background:var(--input);
+  border:1px solid var(--line);color:var(--tx2);font-size:11.5px;font-weight:800;text-align:left;line-height:1.3;
+  min-height:46px;min-width:0;}
+.snd .em{font-size:15px;line-height:1;flex:0 0 auto;}
+.snd>span:last-child{min-width:0;}
+.snd small{display:block;font-size:9px;font-weight:700;color:var(--tx3);margin-top:1px;}
+.snd.on{background:var(--cyan-soft);border-color:var(--cyan);color:var(--cyan);}
+.snd.on small{color:var(--cyan);opacity:.85;}
+.snd:active{transform:scale(.985);}
 .preset{padding:8px 3px;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;
   border-radius:11px;background:var(--panel2);border:1px solid var(--line);
   font-size:11px;font-weight:800;color:var(--tx2);text-align:center;line-height:1.2;letter-spacing:-0.2px;
@@ -593,6 +604,15 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
     <div class="presets" id="preset-buttons"></div>
   </div>
 
+  <div class="card" id="card-lead">
+    <div class="row between" style="margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+      <div class="sec-title">🎹 리드 음색 <span class="tag">6종</span></div>
+      <span class="badge" id="lead-badge">—</span>
+    </div>
+    <div class="soundgrid" id="lead-buttons"></div>
+    <div class="tiny" style="margin-top:7px;">멜로디 트랙 악기를 바로 바꿉니다 — 누르면 그 음색으로 한 음을 들려주고, 재생과 WAV 저장에 그대로 적용됩니다. 샘플을 받지 못하면 같은 계열의 신스로 대신 연주합니다.</div>
+  </div>
+
   <div class="card">
     <div class="row between" style="margin-bottom:8px;">
       <div class="sec-title">🎭 코드 진행 1클릭 변주 <span class="tag">분위기</span></div>
@@ -720,6 +740,24 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
       <button class="chip" data-curve="chill">잔잔한 BGM</button>
       <button class="chip" data-curve="wave">물결</button>
     </div>
+  </div>
+
+  <div class="card" id="card-rhythm">
+    <div class="row between" style="margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+      <div class="sec-title">🥁 리듬 패턴 <span class="tag" id="rhythm-meter">4/4 · 16칸</span></div>
+      <span class="badge" id="rhythm-badge">정박 팝</span>
+    </div>
+    <div class="soundgrid" id="rhythm-buttons"></div>
+    <div class="tiny" style="margin-top:7px;">고르는 순간 드럼 16칸·배이스·코드 컴핑·아르페지오·스윙이 그 리듬으로 다시 짜집니다. <b>왈츠</b>는 3/4(12칸)로 바뀝니다. 프리셋을 고르면 그 장르에 맞는 리듬이 자동으로 선택됩니다.</div>
+  </div>
+
+  <div class="card" id="card-kit">
+    <div class="row between" style="margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+      <div class="sec-title">🥁 드럼 킷 <span class="tag">4종</span></div>
+      <span class="badge" id="kit-badge">—</span>
+    </div>
+    <div class="soundgrid" id="kit-buttons"></div>
+    <div class="tiny" style="margin-top:7px;">808 힙합·로파이 빈티지·어쿠스틱 록·일렉트로 — 킷마다 킥 피치·감쇠·클릭·필터·금속도가 달라 실제로 소리가 바뀝니다. 기존 6종 샘플 킷은 믹스 탭 드럼 칸에서 그대로 고를 수 있습니다.</div>
   </div>
 
   <div class="card">
@@ -1375,6 +1413,6 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
   </div>
 </div>
 
-<script src="app.js?v=20261128v9"></script>
+<script src="app.js?v=20261128v10"></script>
 </body>
 </html>

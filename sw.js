@@ -7,8 +7,8 @@
    · 오프라인 셸: 화면 + 매니페스트 + 아이콘만 담는다.
    ============================================================ */
 const PREFIX = 'aura-studio-pro-';
-const VERSION = PREFIX + '20261128v11';
-const APP_V = '20261128v11';   /* build_pages.py 가 index.html 의 app.js?v= 와 같은 값으로 맞춘다 */
+const VERSION = PREFIX + '20261128v12';
+const APP_V = '20261128v12';   /* build_pages.py 가 index.html 의 app.js?v= 와 같은 값으로 맞춘다 */
 const BASE = new URL('./', self.location).pathname;   // 예: /aura-studio-pro/
 const SHELL = [
   BASE,

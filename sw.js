@@ -3,13 +3,13 @@
    · 관제탑(stock-dashboard-live) API 는 오리진이 달라 캐시·스코프가 물리적으로 분리된다.
    · BASE 는 SW 자신의 위치에서 계산한다 — 저장소 하위 경로 배포에서도 그대로 동작.
    · 규칙: 화면(HTML)은 네트워크 우선(항상 최신), 실패하면 캐시된 셸.
-           API·외부 CDN 은 가로채지 않는다.
+           API·외부 CDN(악기 샘플·Pretendard 폰트) 은 가로채지 않는다.
    · 오프라인 셸: 화면 + 매니페스트 + 아이콘만 담는다.
    ============================================================ */
 const PREFIX = 'aura-studio-pro-';
-const VERSION = PREFIX + 'v4';
-const APP_V = '20261128v8';   /* index.html 의 app.js?v= 와 같아야 오프라인에서도 앱이 열린다 */
-const BASE = new URL('./', self.location).pathname;   // 예: /shorts-studio-pro/
+const VERSION = PREFIX + 'v5';
+const APP_V = '20261128v9';   /* build_pages.py 가 index.html 의 app.js?v= 와 같은 값으로 맞춘다 */
+const BASE = new URL('./', self.location).pathname;   // 예: /aura-studio-pro/
 const SHELL = [
   BASE,
   BASE + 'index.html',
@@ -44,6 +44,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
+  if (req.headers.get('range')) return;                    // 오디오 seek 는 건드리지 않는다
 
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;        // 관제탑 API·외부 CDN 은 브라우저에 그대로 맡긴다

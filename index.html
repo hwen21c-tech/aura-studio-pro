@@ -16,6 +16,10 @@
 <link rel="apple-touch-icon" sizes="180x180" href="icons/aura-apple-180.png" />
 <link rel="icon" type="image/png" sizes="192x192" href="icons/aura-192.png" />
 
+<!-- 한글 폰트 통일 — Pretendard(가변, 동적 서브셋) -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+
 <script>
   /* 첫 페인트 전에 테마 적용 — 다크 기본, 라이트 저장값 반영 */
   (function () {
@@ -60,7 +64,7 @@ body{
     radial-gradient(900px 480px at 96% 4%, var(--violet-soft), transparent 60%),
     var(--bg);
   color:var(--tx);
-  font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',system-ui,-apple-system,sans-serif;
+  font-family:'Pretendard Variable','Pretendard','Apple SD Gothic Neo','Noto Sans KR',system-ui,-apple-system,sans-serif;
   font-size:14px; line-height:1.45;
   -webkit-text-size-adjust:100%;
   min-height:100dvh;
@@ -312,6 +316,32 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
 .tiny{font-size:10px;color:var(--tx3);line-height:1.5;}
 .bars-strip{display:flex;gap:2px;margin-top:7px;align-items:flex-end;height:15px;}
 .bars-strip i{flex:1;height:8px;border-radius:2px;background:var(--track);transition:height .15s ease;}
+
+/* ---------- 스튜디오 퀵 스위처 ---------- */
+.swbar{display:flex;align-items:center;gap:3px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;margin:0 0 -2px;}
+.swbar::-webkit-scrollbar{display:none;}
+.swlink{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:8px;font-size:10.5px;font-weight:800;
+  color:var(--tx3);border:1px solid transparent;white-space:nowrap;text-decoration:none;line-height:1.25;flex:0 0 auto;}
+.swlink:active{transform:scale(.97);}
+.swlink.on{color:var(--cyan);background:var(--cyan-soft);border-color:var(--line);}
+.swlink .em{font-size:11px;line-height:1;}
+
+/* ---------- 쇼츠 기승전결 ---------- */
+.story-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.story-btn{display:flex;flex-direction:column;align-items:center;gap:1px;padding:9px 3px;border-radius:12px;
+  border:1px solid var(--line);background:var(--panel2);color:var(--tx2);font-size:11px;font-weight:800;line-height:1.3;}
+.story-btn b{font-size:15px;font-weight:900;color:var(--tx);letter-spacing:-.02em;}
+.story-btn small{font-size:9.5px;font-weight:700;color:var(--tx3);}
+.story-btn.on{border-color:var(--cyan);background:var(--cyan-soft);color:var(--cyan);}
+.story-btn.on b,.story-btn.on small{color:var(--cyan);}
+.story-track{display:flex;align-items:flex-end;gap:2px;height:34px;margin-top:9px;padding:0 1px;
+  border-radius:9px;background:var(--input);border:1px solid var(--line2);padding:4px;}
+.story-track i{flex:1;border-radius:2px;background:linear-gradient(180deg,var(--violet),var(--cyan));opacity:.75;min-height:2px;}
+.story-track i.fade{background:linear-gradient(180deg,var(--rose),var(--amber));}
+
+/* ---------- 작은 칩 줄 ---------- */
+.minichips{display:flex;flex-wrap:wrap;gap:4px;}
+.minichips .chip{padding:5px 8px;font-size:10.5px;}
 </style>
 </head>
 <body>
@@ -434,6 +464,12 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
 <!-- ============ 헤더 ============ -->
 <header>
   <div class="hwrap">
+    <div class="swbar" aria-label="스튜디오 이동">
+      <a class="swlink" href="https://hwen21c-tech.github.io/shorts-studio-pro/"><span class="em">🎬</span>쇼츠</a>
+      <a class="swlink" href="https://hwen21c-tech.github.io/emoticon-studio-pro/"><span class="em">🎨</span>이모티콘</a>
+      <a class="swlink on" href="./" aria-current="page"><span class="em">🎵</span>작곡</a>
+      <a class="swlink" href="https://hwen21c-tech.github.io/stock-dashboard/preview-content-v2.html"><span class="em">💰</span>수익화</a>
+    </div>
     <div class="brandrow">
       <div class="brand">
         <div class="logo">♫</div>
@@ -529,29 +565,46 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
     <div class="desc" id="ai-tip">—</div>
   </div>
 
-  <div class="card">
-    <div class="row between" style="margin-bottom:8px;">
-      <div class="sec-title">🖼 사진 → 음악 <span class="tag">색감 분석</span></div>
-      <span class="badge" id="photo-badge">대기</span>
-    </div>
-    <label class="photo-drop" for="photo-file">📷 사진 올리기 · 밝기와 색감을 읽어 곡을 맞춥니다</label>
-    <input type="file" id="photo-file" accept="image/*" class="hidden" />
-    <canvas id="photo-canvas" width="320" height="86"></canvas>
-    <div class="row" id="photo-swatches" style="gap:5px;margin-top:7px;">
-      <span class="swatch"></span><span class="swatch"></span><span class="swatch"></span>
-    </div>
-    <div class="tiny" style="margin-top:7px;" id="photo-text">사진을 열면 픽셀 색감을 분석해 템포·키·분위기·환경음을 자동으로 맞춥니다. 사진은 이 기기 밖으로 나가지 않습니다.</div>
-    <div class="row wrap" style="margin-top:8px;gap:5px;" id="photo-scenes">
-      <button class="chip" data-scene="sunset">🌇 노을</button>
-      <button class="chip" data-scene="rainnight">🌧 비 오는 밤</button>
-      <button class="chip" data-scene="ocean">🌊 바다</button>
-      <button class="chip" data-scene="forest">🌿 숲</button>
+  <div class="card fold closed">
+    <button class="sec-title foldhead" data-fold="1" aria-expanded="false">🖼 사진 → 음악 <span class="tag">색감 분석</span> <span class="arrow">▾</span></button>
+    <div class="foldbody" style="margin-top:9px;">
+      <div class="row between" style="margin-bottom:8px;">
+        <span class="desc">사진의 밝기·색감을 읽어 스케일·템포·분위기를 맞춥니다.</span>
+        <span class="badge" id="photo-badge">대기</span>
+      </div>
+      <label class="photo-drop" for="photo-file">📷 사진 올리기 · 밝기와 색감을 읽어 곡을 맞춥니다</label>
+      <input type="file" id="photo-file" accept="image/*" class="hidden" />
+      <canvas id="photo-canvas" width="320" height="86"></canvas>
+      <div class="row" id="photo-swatches" style="gap:5px;margin-top:7px;">
+        <span class="swatch"></span><span class="swatch"></span><span class="swatch"></span>
+      </div>
+      <div class="tiny" style="margin-top:7px;" id="photo-text">사진을 열면 픽셀 색감을 분석해 템포·키·스케일·분위기·환경음을 자동으로 맞춥니다. 사진은 이 기기 밖으로 나가지 않습니다.</div>
+      <div class="row wrap" style="margin-top:8px;gap:5px;" id="photo-scenes">
+        <button class="chip" data-scene="sunset">🌇 노을</button>
+        <button class="chip" data-scene="rainnight">🌧 비 오는 밤</button>
+        <button class="chip" data-scene="ocean">🌊 바다</button>
+        <button class="chip" data-scene="forest">🌿 숲</button>
+      </div>
     </div>
   </div>
 
   <div class="card">
     <div class="sec-title" style="margin-bottom:8px;">🎛 프리셋 <span class="tag" id="preset-count">16</span></div>
     <div class="presets" id="preset-buttons"></div>
+  </div>
+
+  <div class="card">
+    <div class="row between" style="margin-bottom:8px;">
+      <div class="sec-title">🎭 코드 진행 1클릭 변주 <span class="tag">분위기</span></div>
+      <span class="badge" id="vary-badge">—</span>
+    </div>
+    <div class="grid2" style="gap:6px;">
+      <button class="btn" data-vary="canon">💗 감동 · 카논</button>
+      <button class="btn" data-vary="tension">🕯️ 긴장 · 미스터리</button>
+      <button class="btn" data-vary="twofive">🌃 시티팝 · 2-5-1</button>
+      <button class="btn" data-vary="epic">🏛️ 웅장한 오케스트라</button>
+    </div>
+    <div class="tiny" style="margin-top:7px;">지금 곡의 코드·베이스·패드·반주를 그 진행으로 바로 바꿉니다. 믹스 탭에서 멜로디를 잠가 두면 멜로디는 그대로 남습니다.</div>
   </div>
 
   <div class="two">
@@ -568,18 +621,30 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
           </select>
         </div>
         <div>
-          <label class="label" for="mode-select">스케일</label>
+          <label class="label" for="mode-select">스케일 (9종)</label>
           <select id="mode-select" class="inp">
-            <option value="minor" selected>단조 (minor)</option>
-            <option value="major">장조 (major)</option>
-            <option value="dorian">도리안 (dorian)</option>
+            <option value="major">장조 (밝은 팝)</option>
+            <option value="minor" selected>단조 (감성·시티팝)</option>
+            <option value="dorian">도리안 (재즈 네오소울)</option>
+            <option value="mixolydian">믹솔리디안 (시티팝·펑키)</option>
+            <option value="lydian">리디안 (몽환·청량)</option>
+            <option value="phrygian">프리지안 (다크·서스펜스)</option>
+            <option value="harmonic_min">하모닉 마이너 (긴장·오케스트라)</option>
+            <option value="pentatonic_maj">펜타토닉 장조 (밝은 동양·힐링)</option>
+            <option value="pentatonic_min">펜타토닉 단조 (힙합·블루스)</option>
           </select>
+          <div class="tiny" id="scale-hint" style="margin-top:5px;">프리셋을 고르면 어울리는 스케일이 자동으로 맞춰집니다.</div>
         </div>
       </div>
       <div style="margin-top:10px;">
         <div class="row between"><span class="label" style="margin:0;">템포</span>
           <span class="mono" style="font-size:12px;font-weight:800;color:var(--cyan);"><span id="bpm-val">96</span> BPM</span></div>
         <input id="bpm-slider" type="range" min="60" max="170" value="96" aria-label="BPM" />
+        <div class="minichips" style="margin-top:7px;" id="bpm-presets">
+          <button class="chip" data-bpm="124">🔥 빠른 썰·쇼츠 124</button>
+          <button class="chip" data-bpm="105">📊 정보·브리핑 105</button>
+          <button class="chip" data-bpm="80">🌿 감성·힐링 80</button>
+        </div>
       </div>
       <div style="margin-top:8px;">
         <div class="row between"><span class="label" style="margin:0;">밝기 (톤)</span>
@@ -624,13 +689,15 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
     </div>
   </div>
 
-  <div class="card">
-    <div class="row between" style="margin-bottom:6px;">
-      <span class="sec-title">⚡ AI 전송용 영문 프롬프트</span>
-      <button class="btn sm" id="btn-copy-prompt">복사</button>
+  <div class="card fold closed">
+    <button class="sec-title foldhead" data-fold="1" aria-expanded="false">⚡ AI 전송용 영문 프롬프트 <span class="arrow">▾</span></button>
+    <div class="foldbody" style="margin-top:9px;">
+      <div class="row between" style="margin-bottom:6px;">
+        <span class="desc">수노·유디오 같은 생성형 AI에 붙여 넣는 프롬프트</span>
+        <button class="btn sm" id="btn-copy-prompt">복사</button>
+      </div>
+      <textarea id="ai-prompt" rows="2" class="inp mono" style="font-size:10.5px;color:var(--tx2);" readonly></textarea>
     </div>
-    <textarea id="ai-prompt" rows="2" class="inp mono" style="font-size:10.5px;color:var(--tx2);" readonly></textarea>
-    <div class="tiny" style="margin-top:5px;">음악 생성형 AI(수노·유디오·리프트 등)에 그대로 붙여 넣어 고퀄리티 음원을 뽑을 때 씁니다. 이 앱의 반주·편곡·루프 내보내기는 키 없이 전부 브라우저에서 돕니다.</div>
   </div>
 
 </section>
@@ -1013,32 +1080,65 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
 <section id="tab-export" class="hidden">
 
   <div class="card">
-    <div class="sec-title" style="margin-bottom:8px;">🔁 루프 길이 <span class="tag">심리스</span></div>
-    <div class="row wrap" style="gap:6px;" id="loop-chips">
-      <button class="chip on" data-loop="15" data-kind="sec">15초</button>
-      <button class="chip" data-loop="30" data-kind="sec">30초</button>
-      <button class="chip" data-loop="60" data-kind="sec">60초</button>
-      <button class="chip" data-loop="4" data-kind="bars">4마디</button>
-      <button class="chip" data-loop="8" data-kind="bars">8마디</button>
-      <button class="chip" data-loop="16" data-kind="bars">16마디</button>
+    <div class="row between" style="margin-bottom:8px;">
+      <div class="sec-title">🎬 쇼츠 기승전결 자동 편곡 <span class="tag">15·30·60초</span></div>
+      <span class="badge" id="story-badge">꺼짐</span>
     </div>
+    <div class="story-grid" id="story-btns">
+      <button class="story-btn" data-story="15"><b>15초</b><small>쇼츠</small></button>
+      <button class="story-btn" data-story="30"><b>30초</b><small>릴스</small></button>
+      <button class="story-btn" data-story="60"><b>60초</b><small>유튜브</small></button>
+    </div>
+    <div class="story-track" id="story-track" aria-hidden="true"></div>
+    <div class="tiny" style="margin-top:6px;">잔잔한 인트로 → 빌드업 → 하이라이트 드롭 → 마지막 1.5초 자동 페이드아웃. 재생과 저장 파일에 같은 엔벨로프가 입혀집니다.</div>
+    <label class="switch" style="margin-top:9px;"><input type="checkbox" id="chk-story" /><span>기승전결 엔벨로프 켜기 (끄면 평평한 루프)</span></label>
     <div class="sub" style="padding:9px 10px;margin-top:9px;">
       <div class="kv"><span class="dim">실제 길이</span><b class="mono" id="loop-sec">15.0초</b></div>
       <div class="kv" style="margin-top:3px;"><span class="dim">마디 / 템포</span><b class="mono" id="loop-bars">6마디 · 96 BPM</b></div>
       <div class="kv" style="margin-top:3px;"><span class="dim">이음매</span><b class="mono" id="loop-seam" style="color:var(--green);">끊김 없음 (테일 감아넣기)</b></div>
     </div>
     <label class="switch" style="margin-top:9px;"><input type="checkbox" id="chk-exactsec" checked /><span>초 정확 맞춤 (템포를 살짝 조정해 딱 15·30·60초)</span></label>
-    <label class="switch" style="margin-top:7px;"><input type="checkbox" id="chk-normalize" checked /><span>피크 정규화 (-1dBFS)</span></label>
-    <div class="prog" style="margin-top:9px;display:none;" id="export-prog"><i></i></div>
-    <div class="grid2" style="margin-top:10px;gap:8px;">
-      <button class="btn green" id="btn-export-wav">⬇ WAV 저장</button>
-      <button class="btn" id="btn-export-midi">🎹 MIDI 저장</button>
+    <div style="margin-top:9px;">
+      <label class="label" for="norm-mode">음량 맞춤</label>
+      <select id="norm-mode" class="inp">
+        <option value="peak">피크 정규화 (−1dBFS) — 지금까지 방식</option>
+        <option value="lufs">쇼츠·유튜브 −14 LUFS 감각 (추천)</option>
+        <option value="off">정규화 안 함 (원음 그대로)</option>
+      </select>
     </div>
-    <div class="tiny" style="margin-top:7px;" id="export-note">들리는 그대로 오프라인에서 다시 렌더링합니다(샘플·EQ·리버브·리미터 동일). 노트북 없이 폰에서도 10초 안팎이면 끝납니다.</div>
+    <div class="prog" style="margin-top:9px;display:none;" id="export-prog"><i></i></div>
+    <div class="tiny" style="margin-top:9px;" id="export-note">들리는 그대로 오프라인에서 다시 렌더링합니다(샘플·EQ·리버브·리미터 동일). 노트북 없이 폰에서도 10초 안팎이면 끝납니다.</div>
   </div>
 
   <div class="card">
-    <div class="sec-title" style="margin-bottom:7px;">📚 프로젝트 보관함</div>
+    <div class="sec-title" style="margin-bottom:8px;">💾 저장 · 보내기</div>
+    <div class="grid3" style="gap:6px;">
+      <button class="btn green" id="btn-export-wav">⬇ WAV</button>
+      <button class="btn" id="btn-export-webm">🪶 경량(Opus)</button>
+      <button class="btn" id="btn-export-midi">🎹 MIDI</button>
+    </div>
+    <button class="btn primary block" id="btn-to-shorts" style="margin-top:8px;">🎬 이 BGM, 쇼츠 편집기로 바로 넘기기</button>
+    <div class="tiny" style="margin-top:6px;">내려받지 않고 쇼츠 스튜디오 BGM 칸에 바로 꽂습니다. 경량(Opus)은 폰에서 가볍게 쓰는 WebM·OGG 형식이라, 변환은 곡 길이만큼 실시간으로 걸립니다.</div>
+  </div>
+
+  <div class="card fold closed">
+    <button class="sec-title foldhead" data-fold="1" aria-expanded="false">🔁 루프 길이 직접 고르기 <span class="arrow">▾</span></button>
+    <div class="foldbody" style="margin-top:9px;">
+      <div class="row wrap" style="gap:6px;" id="loop-chips">
+        <button class="chip on" data-loop="15" data-kind="sec">15초</button>
+        <button class="chip" data-loop="30" data-kind="sec">30초</button>
+        <button class="chip" data-loop="60" data-kind="sec">60초</button>
+        <button class="chip" data-loop="4" data-kind="bars">4마디</button>
+        <button class="chip" data-loop="8" data-kind="bars">8마디</button>
+        <button class="chip" data-loop="16" data-kind="bars">16마디</button>
+      </div>
+      <div class="tiny" style="margin-top:7px;">초를 직접 고르면 기승전결 없이 그 길이만 반복하는 평평한 루프가 됩니다.</div>
+    </div>
+  </div>
+
+  <div class="card fold closed">
+    <button class="sec-title foldhead" data-fold="1" aria-expanded="false">📚 프로젝트 보관함 <span class="arrow">▾</span></button>
+    <div class="foldbody" style="margin-top:9px;">
     <div class="row" style="gap:6px;">
       <input id="proj-name" class="inp" placeholder="곡 이름 (비우면 자동)" style="flex:1;padding:7px 9px;font-size:12px;" />
       <button class="btn sm" id="btn-lib-save">저장</button>
@@ -1054,13 +1154,13 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
     </div>
     <button class="btn sm block" id="btn-lib-export" style="margin-top:6px;">📦 보관함 전체 JSON 백업</button>
     <div class="tiny" style="margin-top:6px;">보관함·빠른 저장은 이 기기에 남습니다. 다른 기기로 옮길 때는 JSON을 쓰세요. 저장 항목: 코드·멜로디·드럼·보컬·에너지 곡선·믹서·환경음·연출.</div>
+  
+    </div>
   </div>
 
-  <div class="card">
-    <div class="row between" style="margin-bottom:7px;">
-      <div class="sec-title">🅰️🅱️ A/B 스냅샷</div>
-      <span class="badge" id="snap-active">A</span>
-    </div>
+  <div class="card fold closed">
+    <button class="sec-title foldhead" data-fold="1" aria-expanded="false">🅰️🅱️ A/B 스냅샷 <span class="arrow">▾</span></button>
+    <div class="foldbody" style="margin-top:9px;">
     <div class="grid2" style="gap:8px;">
       <div class="sub" style="padding:8px;">
         <div class="row between"><b style="font-size:12px;">A</b><span class="tiny" id="snap-a-info">비어 있음</span></div>
@@ -1079,25 +1179,30 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
     </div>
     <button class="btn block" id="btn-snap-toggle" style="margin-top:8px;">A ↔ B 번갈아 들어보기</button>
     <div class="tiny" style="margin-top:6px;">지금 설정(코드·멜로디·믹서·환경음)을 A·B에 담아 두고 한 번씩 번갈아 재생해 비교하세요.</div>
+  
+    </div>
   </div>
 
-  <div class="card">
-    <div class="row between" style="margin-bottom:7px;">
-      <div class="sec-title">🔗 곡 공유 링크</div>
-      <span class="badge" id="share-badge">URL</span>
-    </div>
+  <div class="card fold closed">
+    <button class="sec-title foldhead" data-fold="1" aria-expanded="false">🔗 곡 공유 링크 <span class="arrow">▾</span></button>
+    <div class="foldbody" style="margin-top:9px;">
     <button class="btn block" id="btn-share-link">현재 곡을 링크로 복사</button>
     <div class="tiny" style="margin-top:6px;">코드·멜로디·드럼·믹서·환경음·대본까지 주소 하나(<span class="mono">#song=…</span>)에 담습니다. 다른 기기에서 열면 그대로 복원됩니다.</div>
+  
+    </div>
   </div>
 
-  <div class="card">
-    <div class="sec-title" style="margin-bottom:8px;">📱 쇼츠·릴스 BGM 팁</div>
+  <div class="card fold closed">
+    <button class="sec-title foldhead" data-fold="1" aria-expanded="false">📱 쇼츠·릴스 BGM 팁 <span class="arrow">▾</span></button>
+    <div class="foldbody" style="margin-top:9px;">
     <ul class="desc" style="padding-left:16px;margin:0;line-height:1.75;">
       <li><b>15초</b>는 인트로·아웃트로, <b>30초</b>는 릴스 기본, <b>60초</b>는 유튜브 쇼츠 풀 길이에 맞춰 3종을 미리 뽑아 두면 편합니다.</li>
       <li>영상 자막이 읽히도록 <b>멜로디 트랙 볼륨을 60% 아래</b>로 두고, 내보낼 때 HIGH를 살짝 올리면 폰 스피커에서 잘 들립니다.</li>
       <li>말소리와 겹칠 때는 <b>LOW를 -1dB</b>, <b>REVERB 20% 이하</b>가 깔끔합니다.</li>
       <li>몇 번 반복해도 어색하지 않게 <b>테일을 감아넣은 루프</b>로 렌더링합니다. 반복 재생에 딱 맞습니다.</li>
     </ul>
+  
+    </div>
   </div>
 
   <div class="card">
@@ -1105,7 +1210,7 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
     <div class="kv"><span class="dim">엔진</span><b id="about-engine">—</b></div>
     <div class="kv" style="margin-top:3px;"><span class="dim">악기 샘플</span><b id="about-samples">—</b></div>
     <div class="kv" style="margin-top:3px;"><span class="dim">AI 작곡</span><b id="about-ai">—</b></div>
-    <div class="kv" style="margin-top:3px;"><span class="dim">버전</span><b class="mono">2.0.0 · v8</b></div>
+    <div class="kv" style="margin-top:3px;"><span class="dim">버전</span><b class="mono">2.0.0 · v9</b></div>
   </div>
 
 </section>
@@ -1131,7 +1236,8 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
         <h4>✨ 작곡 탭</h4>
         <ul>
           <li><b>무드</b>: 장면·장르·악기·분위기를 자유롭게. 길수록 결과가 좋습니다.</li>
-          <li><b>키/스케일</b>: 단조(감성·시티팝) · 장조(밝은 팝) · 도리안(세련된 재즈풍).</li>
+          <li><b>키/스케일</b>: 9종 — 장조·단조·도리안·픽솔리디안(시티팝·펑키)·리디안(몽환·청량)·프리지안(다크·서스펜스)·하모닉 마이너(긴장·오케스트라)·펜타토닉 장/단조. 프리셋·무드·사진 색감을 고르면 어울리는 스케일이 자동으로 맞춰집니다.</li>
+          <li><b>템포 프리셋</b>: 🔥 빠른 썰·쇼츠 124 · 📊 정보·브리핑 105 · 🌿 감성·힐링 80 — 한 번에 BPM을 맞춥니다.</li>
           <li><b>밝기</b>는 고음역과 화음의 밝기, <b>에너지</b>는 음표 밀도와 드럼 세기를 정합니다.</li>
           <li><b>프리셋</b>은 키·템포·악기 조합과 전용 드럼 패턴을 한 번에 바꿉니다. 16가지 — 시티팝·로파이·시네마틱·신스웨이브·어쿠스틱·힙합 + 뉴스/경제·속보/서스펜스·보사노바·K-POP·발라드·펑키·8비트·앰비언트·테크하우스·네오소울.</li>
           <li><b>휴머나이즈</b>를 켜면 강약과 타이밍이 사람처럼 조금씩 흔들립니다. 기계적인 데모 느낌을 없애는 스위치입니다.</li>
@@ -1208,11 +1314,35 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
         </ul>
       </div>
       <div class="gcard">
-        <h4>⬇ 내보내기 탭</h4>
+        <h4>🎭 코드 진행 1클릭 변주 <span class="tag">새 기능</span></h4>
         <ul>
-          <li><b>루프 길이</b>: 15·30·60초 또는 4/8/16마디. 초 단위를 고르면 마디에 딱 맞춰 길이를 계산하고, 필요하면 템포를 살짝 조정해 정확히 맞춥니다.</li>
+          <li>지금 곡의 코드·베이스·패드·반주를 <b>감동(카논)·긴장(미스터리)·시티팝(투파이브원)·웅장한 오케스트라</b> 네 진행으로 바로 바꿉니다.</li>
+          <li>마음에 안 들면 같은 버튼을 한 번 더 — 같은 진행에서 다른 편곡이 나옵니다.</li>
+          <li>멜로디를 지키고 싶으면 믹스 탭에서 멜로디 트랙을 <b>🔒 잠가</b> 두세요. 잠근 멜로디는 그대로 남습니다.</li>
+        </ul>
+      </div>
+      <div class="gcard">
+        <h4>⬇ 내보내기 탭 <span class="tag">새 기능</span></h4>
+        <ul>
+          <li><b>쇼츠 기승전결</b>: <b>15초 쇼츠 · 30초 릴스 · 60초 유튜브</b>를 고르면 잠잔한 인트로 → 빌드업 → 하이라이트 드롭 → 마지막 1.5초 페이드아웃을 자동으로 입혀 재생과 저장 파일에 그대로 담깁니다.</li>
+          <li><b>음량 맞춤</b>: <b>−14 LUFS 감각</b>을 고르면 유튜브·쇼츠 기준 음량에 맞추고, 피크는 −1dBFS로 보호합니다. 측정값을 저장 결과에 함께 보여 줍니다.</li>
+          <li><b>경량(Opus)</b>: WAV 대신 WebM·OGG Opus로 뽑아 폰에서 가볍게 쓰는 파일로 만듭니다(변환은 곡 길이만큼 실시간).</li>
+          <li><b>🎬 이 BGM, 쇼츠 편집기로 바로 넘기기</b>: 내려받지 않고 쇼츠 스튜디오의 BGM 간에 바로 꽃습니다.</li>
           <li>끝에서 잘리는 잔향은 <b>앞부분에 감아 넣어</b> 반복 재생 시 이음매가 들리지 않습니다.</li>
-          <li><b>MIDI</b>는 멜로디·코드·베이스·드럼 4트랙으로 저장되어 다른 작곡 앱에서도 열립니다.</li>
+        </ul>
+      </div>
+      <div class="gcard">
+        <h4>🧭 스튜디오 이동</h4>
+        <ul>
+          <li>상단 작은 이동 바에서 <b>🎬 쇼츠 · 🎨 이모티콘 · 🎵 작곡 · 💰 수익화</b>를 바로 오갑니다.</li>
+          <li>AURA에서 만든 BGM은 쇼츠 스튜디오에서 자동으로 받아집니다(같은 오리진).</li>
+        </ul>
+      </div>
+      <div class="gcard">
+        <h4>⬇ 내보내기 탭 (기본)</h4>
+        <ul>
+          <li><b>루프 길이</b>: 기승전결을 끄면 15·30·60초 또는 4/8/16마디 평평한 루프로 뽑습니다.</li>
+          <li><b>MIDI</b>는 멜로디·코드·베이스·아르페지오·드럼으로 저장되어 다른 작곡 앱에서도 열립니다.</li>
         </ul>
       </div>
       <div class="gcard">
@@ -1245,6 +1375,6 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
   </div>
 </div>
 
-<script src="app.js?v=20261128v8"></script>
+<script src="app.js?v=20261128v9"></script>
 </body>
 </html>

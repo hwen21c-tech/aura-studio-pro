@@ -5463,6 +5463,8 @@ function s2AfterLead(){
   renderStep2(); drawAll(); refreshStats(); refreshLoopInfo();
   updateSamplerStatus(); syncPresetUI(); saveSettings();
   if (typeof showAiCard === 'function') showAiCard();
+  /* 방금 만든 리드를 바로 들려준다 (누른 직후라 재생 권한도 있다) */
+  setTimeout(function(){ if (!AU.playing && S.notes.length) startPlayback(); }, 300);
 }
 
 /* 내장 엔진으로 리드만 — 즉시·반복 가능 */
@@ -5641,6 +5643,8 @@ function addAccompaniment(){
     var t = s2Track(r.role);
     return r.name + '(' + (t && INST[t.inst] ? INST[t.inst].name : '—') + ')';
   });
+  /* 입힌 반주를 바로 들려준다 */
+  setTimeout(function(){ if (!AU.playing && S.notes.length) startPlayback(); }, 320);
   toast(names.length
     ? '2차 완료 · 리드 그대로 + ' + names.join('·')
     : '2차 완료 · 반주를 모두 비켜 두었습니다 (리드만)', 'ok');

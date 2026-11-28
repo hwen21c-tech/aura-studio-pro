@@ -50,6 +50,17 @@ build.py        로컬(Vercel)용 빌드
 build_pages.py  GitHub Pages 하위 경로용 빌드(상대경로·?v=·API 주소 보정)
 ```
 
+## 쇼츠 스튜디오로 BGM 넘기기 (연동 계약)
+
+`🎬 이 BGM, 쇼츠 편집기로 바로 넘기기`는 같은 오리진(`hwen21c-tech.github.io`)을 써서 내려받기 없이 넘깁니다.
+
+- **IndexedDB** `aura_studio` → store `handoff` → key `aura_handoff_bgm`
+  → `{ blob: Blob(audio/wav), audio: 같은 Blob, meta:{…}, name, mime, duration, bpm, key, keyIndex, mode, title, at, size, story, lufs, dataUrl }`
+- **localStorage** `aura_handoff_bgm` → JSON 메타 (15초 이하는 `dataUrl` = 22kHz 모노 WAV data URL 포함, 그보다 길면 `storage:'idb'`)
+- 이동 주소: `https://hwen21c-tech.github.io/shorts-studio-pro/?from=aura&t=<ms>`
+
+받는 쪽(쇼츠 스튜디오)은 `dataUrl` → 없으면 IndexedDB `blob` 순으로 읽고, **가져온 뒤 두 저장값을 지워** 다음에 열 때 옛 BGM이 다시 들어오지 않게 합니다.
+
 ## 참고
 
 - UI 는 **Pretendard**(가변 폰트)로 통일했고, 폴드8(412px) 기준으로 덜 쓰는 옵션은 아코디언으로 접었다.

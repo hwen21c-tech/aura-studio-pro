@@ -5009,7 +5009,10 @@ function applyRhythm(id){
   rebuildEvents();
   /* 시퀀서가 인트로(드럼이 거의 없는 마디)에 머물면 바뀐 게 안 보인다 — 가장 밀도 높은 마디로 */
   var bestBar = 0, bestE = -1;
-  for (var q = 0; q < S.bars; q++) { var eq = barEnergy(q); if (eq > bestE) { bestE = eq; bestBar = q; } }
+  for (var q = 0; q < S.bars; q++) {
+    if (S.fill && (q + 1) % 4 === 0) continue;   /* 필인 마디는 패턴이 가려진다 */
+    var eq = barEnergy(q); if (eq > bestE) { bestE = eq; bestBar = q; }
+  }
   S.drumBar = bestBar;
 
   var sw = $('swing-slider'); if (sw) sw.value = S.swing;

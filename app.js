@@ -3198,7 +3198,7 @@ function refreshSlots(){
     var t = S.tracks[i]; if (!t) return;
     var holder = tr.querySelector('.top .row');
     var old = holder && holder.querySelector('.slot');
-    if (old) old.outerHTML = slotBadge(t.inst);
+    if (old) old.outerHTML = t.wait ? '<span class="slot wait">대기</span>' : slotBadge(t.inst);
   });
 }
 
@@ -5514,7 +5514,7 @@ function composeLeadOnly(opts){
   }
 
   var ctrl = new AbortController();
-  var timer = setTimeout(function(){ try { ctrl.abort(); } catch (e) {} }, 24000);
+  var timer = setTimeout(function(){ try { ctrl.abort(); } catch (e) {} }, 30000);
   fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -232,6 +232,22 @@ main{max-width:1180px;margin:0 auto;padding:11px 11px 34px;width:100%;}
 .slot.live{background:var(--green-soft);color:var(--green);}
 .slot.synth{background:var(--violet-soft);color:var(--violet);}
 .slot.load{background:var(--amber-soft);color:var(--amber);}
+.slot.wait{background:var(--amber-soft);color:var(--amber);opacity:.9;}
+.trk.wait{opacity:.76;}
+
+/* ---------- v11 — 2단계 작곡 (1차 리드 → 2차 반주) ---------- */
+.s2box{margin-top:8px;padding:9px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);}
+.s2t{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;margin-bottom:7px;}
+.s2t b{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;
+  background:var(--cyan-soft);color:var(--cyan);font-size:10px;font-weight:900;flex:0 0 auto;}
+.s2t .tiny{margin-left:auto;text-align:right;}
+.s2grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.s2item{background:var(--input);border:1px solid var(--line);border-radius:10px;padding:6px 7px;min-width:0;transition:opacity .15s;}
+.s2item.off{opacity:.5;}
+.s2item label{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;color:var(--tx2);}
+.s2item label input{width:14px;height:14px;accent-color:var(--cyan);}
+.s2item select{width:100%;margin-top:4px;padding:4px 20px 4px 6px;font-size:10.5px;border-radius:8px;}
+#card-2step .prog{margin-top:8px;}
 
 /* ---------- 진행/토스트 ---------- */
 .toasts{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom));z-index:9998;display:flex;flex-direction:column;
@@ -576,6 +592,32 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
     <div class="desc" id="ai-tip">—</div>
   </div>
 
+  <!-- v11 — 2단계 작곡: 1차 리드 → 2차 반주 -->
+  <div class="card" id="card-2step">
+    <div class="row between" style="margin-bottom:7px;flex-wrap:wrap;gap:6px;">
+      <div class="sec-title">🪜 2단계 작곡 <span class="tag">리드 → 반주</span></div>
+      <span class="badge" id="s2-badge">1차 대기</span>
+    </div>
+    <div class="tiny">먼저 <b>리드 멜로디만</b> 듣고, 마음에 들면 그 리드는 <b>🔒 그대로</b> 둔 채 원하는 반주만 골라 입힙니다. 2차에서 리드의 음정·리듬·키·BPM은 1음도 바뀌지 않습니다.</div>
+
+    <div class="s2box" id="s2-box1">
+      <div class="s2t"><b>1</b> 리드 멜로디 <span class="tiny" id="s2-lead-name">—</span></div>
+      <select id="s2-lead" class="inp" aria-label="리드 음색"></select>
+      <div class="row" style="gap:6px;margin-top:7px;">
+        <button class="btn primary" id="btn-s2-lead" style="flex:1;">🎼 1차 리드만 작곡</button>
+        <button class="btn" id="btn-s2-relead" title="같은 설정으로 리드만 다시 뽑기" aria-label="리드 다시 뽑기">↻</button>
+      </div>
+    </div>
+
+    <div class="s2box" id="s2-box2">
+      <div class="s2t"><b>2</b> 반주 입히기 <span class="tiny" id="s2-lock">리드 잠금 대기</span></div>
+      <div class="s2grid" id="s2-tracks"></div>
+      <button class="btn primary" id="btn-s2-acc" style="width:100%;margin-top:8px;">🎚 2차 반주 입히기</button>
+      <div class="tiny" id="s2-note" style="margin-top:6px;">1차로 리드를 먼저 만들면 반주를 입힐 수 있습니다.</div>
+    </div>
+    <div class="prog" style="margin-top:8px;display:none;" id="s2-prog"><i></i></div>
+  </div>
+
   <div class="card fold closed">
     <button class="sec-title foldhead" data-fold="1" aria-expanded="false">🖼 사진 → 음악 <span class="tag">색감 분석</span> <span class="arrow">▾</span></button>
     <div class="foldbody" style="margin-top:9px;">
@@ -606,7 +648,7 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
 
   <div class="card" id="card-lead">
     <div class="row between" style="margin-bottom:8px;flex-wrap:wrap;gap:6px;">
-      <div class="sec-title">🎹 리드 음색 <span class="tag">6종</span></div>
+      <div class="sec-title">🎹 리드 음색 <span class="tag" id="lead-count">14</span></div>
       <span class="badge" id="lead-badge">—</span>
     </div>
     <div class="soundgrid" id="lead-buttons"></div>
@@ -753,11 +795,11 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
 
   <div class="card" id="card-kit">
     <div class="row between" style="margin-bottom:8px;flex-wrap:wrap;gap:6px;">
-      <div class="sec-title">🥁 드럼 킷 <span class="tag">4종</span></div>
+      <div class="sec-title">🥁 드럼 킷 <span class="tag" id="kit-count">7</span></div>
       <span class="badge" id="kit-badge">—</span>
     </div>
     <div class="soundgrid" id="kit-buttons"></div>
-    <div class="tiny" style="margin-top:7px;">808 힙합·로파이 빈티지·어쿠스틱 록·일렉트로 — 킷마다 킥 피치·감쇠·클릭·필터·금속도가 달라 실제로 소리가 바뀝니다. 기존 6종 샘플 킷은 믹스 탭 드럼 칸에서 그대로 고를 수 있습니다.</div>
+    <div class="tiny" style="margin-top:7px;">808 힙합·로파이 빈티지·어쿠스틱 록·일렉트로·재즈 브러시·하우스·오케스트라 — 킷마다 킥 피치·감쇠·클릭·필터·금속도가 달라 실제로 소리가 바뀝니다. 기존 6종 샘플 킷은 믹스 탭 드럼 칸에서 그대로 고를 수 있습니다.</div>
   </div>
 
   <div class="card">
@@ -1248,7 +1290,7 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
     <div class="kv"><span class="dim">엔진</span><b id="about-engine">—</b></div>
     <div class="kv" style="margin-top:3px;"><span class="dim">악기 샘플</span><b id="about-samples">—</b></div>
     <div class="kv" style="margin-top:3px;"><span class="dim">AI 작곡</span><b id="about-ai">—</b></div>
-    <div class="kv" style="margin-top:3px;"><span class="dim">버전</span><b class="mono">2.1.0 · v10</b></div>
+    <div class="kv" style="margin-top:3px;"><span class="dim">버전</span><b class="mono">2.2.0 · v11</b></div>
   </div>
 
 </section>
@@ -1266,6 +1308,7 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
         <h4>🎧 3분 만에 BGM 한 곡</h4>
         <ul>
           <li><b>① 작곡 탭</b>에서 분위기를 한글로 적고 <span class="kbd">AI 작곡 시작</span>을 누릅니다. (서버가 막히면 자동으로 내장 엔진이 대신 작곡합니다)</li>
+          <li><b>리드부터 다듬고 싶다면</b> <b>🪜 2단계 작곡</b>: <span class="kbd">1차 리드만 작곡</span> → 마음에 들면 <span class="kbd">2차 반주 입히기</span>. 리드는 잠근 채 반주만 고를 수 있습니다.</li>
           <li><b>② 시퀀스 탭</b>에서 피아노 롤·드럼을 직접 고치고 에너지 그래프로 기승전결을 잡습니다.</li>
           <li><b>③ 내보내기 탭</b>에서 15·30·60초 루프를 골라 <span class="kbd">WAV 저장</span> → 쇼츠 편집기에 그대로 올립니다. 영상이 있다면 <b>영상 탭</b>에서 합본 한 파일로 바로 뽑을 수 있습니다.</li>
         </ul>
@@ -1283,11 +1326,21 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
         </ul>
       </div>
       <div class="gcard">
-        <h4>🎛 사운드 다양성 — 리듬 8 · 킷 4 · 리드 6 <span class="tag">v10</span></h4>
+        <h4>🪜 2단계 작곡 — 리드 먼저 → 반주 입히기 <span class="tag">v11</span></h4>
+        <ul>
+          <li><b>① 1차 리드만 작곡</b>: 리드 음색(피아노·EP·플럭·플루트·글래스·벨·칩튠·리드 신스·브라스·바이올린·색소폰·트럼펫·일렉 기타·마림바)을 고르고 누르면 <b>리드 멜로디만</b> 만들어집니다. 나머지 5트랙은 <b>대기</b>로 조용해 리드만 들립니다.</li>
+          <li>마음에 안 들면 <b>↻</b>로 리드만 다시 뽑거나 리드 음색만 바꿔 들어 보세요(1차는 몇 번을 다시 해도 반주는 건드리지 않습니다).</li>
+          <li><b>② 2차 반주 입히기</b>: 리드는 자동으로 <b>🔒 잠기고</b>, 체크한 반주 트랙(코드·베이스·드럼·아르페지오·보컬)만 고른 악기로 새로 깔립니다. <b>리드의 음정·리듬·키·BPM은 1음도 바뀌지 않습니다</b>(바뀌면 원본으로 되돌립니다).</li>
+          <li>다시 누르면 같은 리드에 다른 반주가 나옵니다. 전체를 새로 쓰려면 위의 <span class="kbd">AI 작곡 시작</span>이나 프리셋을 쓰면 되고, 그때는 2단계가 1차 대기로 돌아갑니다.</li>
+        </ul>
+      </div>
+      <div class="gcard">
+        <h4>🎛 사운드 다양성 — 리듬 8 · 킷 7 · 리드 14 <span class="tag">v11</span></h4>
         <ul>
           <li><b>리듬 패턴 8종</b> — 시퀀스 탭. 정박 팝 · 힙합 붐뱁 · 트랩 16비트 · 4온더플로어(하우스) · 시티팝 스윙 · 보사노바 · 왈츠 3/4 · 긴장감 스타카토. 누르는 순간 드럼 칸·베이스 리듬·코드 컴핑·아르페지오·스윙이 그 리듬으로 다시 짜이고, 시퀀서가 가장 밀도 높은 마디로 이동합니다. <b>왈츠</b>는 3/4(12칸)로 바뀝니다.</li>
-          <li><b>드럼 킷 4종</b> — 808 힙합 · 로파이 빈티지 · 어쿠스틱 록 · 일렉트로. 킷마다 킥 피치·감쇠·클릭·드라이브·필터·금속도가 달라 소리가 실제로 달라지고, 누르면 킥·햇·스네어·오픈햇을 미리 들려줍니다. 기존 6종 샘플 킷은 믹스 탭 드럼 칸에서 그대로 고를 수 있습니다.</li>
-          <li><b>리드 음색 6종</b> — 작곡 탭. 피아노 · 플럭 · 브라스 · 리드 신스 · 8비트 칩튠 · 감성 벨. 멜로디 트랙 악기를 바꾸고 한 음을 들려줍니다. 재생과 WAV·Opus 저장에 그대로 적용됩니다.</li>
+          <li><b>드럼 킷 7종</b> — 808 힙합 · 로파이 빈티지 · 어쿠스틱 록 · 일렉트로 · <b>재즈 브러시</b> · <b>하우스</b> · <b>오케스트라</b>. 킷마다 킥 피치·감쇠·클릭·드라이브·필터·금속도가 달라 소리가 실제로 달라지고, 누르면 킥·햇·스네어·오픈햇을 미리 들려줍니다. 기존 6종 샘플 킷은 믹스 탭 드럼 칸에서 그대로 고를 수 있습니다.</li>
+          <li><b>리드 음색 14종</b> — 작곡 탭. 피아노 · EP · 플럭 · 플루트 · 글래스 벨 · 감성 벨 · 칩튠 · 리드 신스 · 브라스 · 바이올린 · 색소폰 · 트럼펫 · 일렉 기타 · 마림바. 멜로디 트랙 악기를 바꾸고 한 음을 들려줍니다. 재생과 WAV·Opus 저장에 그대로 적용됩니다.</li>
+          <li><b>반주 악기 확장</b> — 믹스 탭 트랙별 선택. 코드: 스트링·웜 패드·패드·오르간·EP·피아노·어쿠스틱/나일론 기타·하모니움·브라스·합창 / 베이스: 일렉·피크·슬랩·프렛리스·서브 신스·808 서브 / 아르페지오: 기타·하프·실로폰·마림바·플럭·벨·피아노·오르간·글래스·칩 / 보컬: Ooh·Aah·허밍·찹. 샘플을 받지 못하면 같은 계열의 신스로 대신 연주합니다.</li>
           <li><b>프리셋 자동 연동</b> — 프리셋을 고르면 그 장르의 리듬이 함께 선택되고(배지에 ‘프리셋 자동’), 리듬 칩을 직접 누르면 고른 리듬이 우선합니다.</li>
         </ul>
       </div>
@@ -1422,6 +1475,6 @@ html.pin-locked #pinLockOverlay{display:flex !important;}
   </div>
 </div>
 
-<script src="app.js?v=20261128v10"></script>
+<script src="app.js?v=20261128v11"></script>
 </body>
 </html>

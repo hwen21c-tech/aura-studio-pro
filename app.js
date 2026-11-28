@@ -2002,6 +2002,37 @@ function idbGet(key){
   });
 }
 
+/* 호환용 경량 데이터 URL — 22kHz 모노 WAV(내려받기 없이 겁내기 위함) */
+function compactWavDataUrl(buf, rate){
+  rate = rate || 22050;
+  var ratio = buf.sampleRate / rate;
+  var outLen = Math.max(1, Math.floor(buf.length / ratio));
+  var ab = new ArrayBuffer(44 + outLen * 2);
+  var view = new DataView(ab);
+  var ws = function(o, s){ for (var i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+  ws(0, 'RIFF'); view.setUint32(4, 44 - 8 + outLen * 2, true); ws(8, 'WAVE');
+  ws(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true); view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+  ws(36, 'data'); view.setUint32(40, outLen * 2, true);
+  var d0 = buf.getChannelData(0);
+  var d1 = buf.numberOfChannels > 1 ? buf.getChannelData(1) : d0;
+  var off = 44;
+  for (var i2 = 0; i2 < outLen; i2++){
+    var pos = i2 * ratio, i0 = Math.floor(pos), fr = pos - i0;
+    var a = (d0[i0] || 0) * (1 - fr) + (d0[i0 + 1] || 0) * fr;
+    var b = (d1[i0] || 0) * (1 - fr) + (d1[i0 + 1] || 0) * fr;
+    var v = Math.max(-1, Math.min(1, (a + b) / 2));
+    view.setInt16(off, v < 0 ? v * 0x8000 : v * 0x7FFF, true);
+    off += 2;
+  }
+  var bytes = new Uint8Array(ab), chunk = 0x8000, parts = [];
+  for (var k = 0; k < bytes.length; k += chunk){
+    parts.push(String.fromCharCode.apply(null, bytes.subarray(k, k + chunk)));
+  }
+  return 'data:audio/wav;base64,' + btoa(parts.join(''));
+}
+
 function handoffToShorts(){
   if (handoffBusy) return;
   handoffBusy = true;
@@ -2036,7 +2067,20 @@ function handoffToShorts(){
         size: enc.bytes,
         storage: 'idb'
       };
-      return idbPut(HANDOFF_KEY, { blob: enc.blob, meta: meta })
+      /* 15초 이하는 데이터 URL 을 같이 넣어 둔다 — 수신 측이 IndexedDB 를 안 읽어도 바로 쓸 수 있게 */
+      if (o.plan.sec <= 15.5){
+        try {
+          var du = compactWavDataUrl(o.buf, 22050);
+          if (du.length <= 1000000){ meta.dataUrl = du; meta.dataMime = 'audio/wav'; meta.dataNote = '22kHz 모노 경량본'; }
+        } catch (e) {}
+      }
+      var rec = {
+        blob: enc.blob, audio: enc.blob, meta: meta,
+        name: meta.name, mime: meta.mime, duration: meta.duration, bpm: meta.bpm,
+        key: meta.key, keyIndex: meta.keyIndex, mode: meta.mode, title: meta.title,
+        at: meta.at, size: meta.size, story: meta.story, lufs: meta.lufs, dataUrl: meta.dataUrl || null
+      };
+      return idbPut(HANDOFF_KEY, rec)
         .then(function(){ return meta; })
         .catch(function(e){
           /* IndexedDB가 막힌 환경 — 데이터 URL로라도 넘긴다 */
@@ -2049,7 +2093,11 @@ function handoffToShorts(){
         });
     })
     .then(function(meta){
-      try { localStorage.setItem(HANDOFF_KEY, JSON.stringify(meta)); } catch (e) {}
+      try { localStorage.setItem(HANDOFF_KEY, JSON.stringify(meta)); }
+      catch (e) {
+        /* 저장 공간이 모자라면 데이터 URL 없이라도 남긴다 */
+        try { var slim = Object.assign({}, meta); delete slim.dataUrl; localStorage.setItem(HANDOFF_KEY, JSON.stringify(slim)); } catch (e2) {}
+      }
       var url = SHORTS_URL + '?from=aura&t=' + Date.now();
       if (tab && !tab.closed) { try { tab.location.href = url; } catch (e) { tab = null; } }
       if (!tab) { try { tab = window.open(url, '_blank'); } catch (e2) { tab = null; } }
